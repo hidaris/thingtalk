@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+
+import asyncio
+
+
+class AsyncMixin:
+    def _run_async(self, coro):
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        print(future.result())
+        return future.result()

@@ -3,9 +3,10 @@
 from zeroconf import ServiceInfo, Zeroconf
 import socket
 import asyncio
-import uvicorn
+from contextlib import contextmanager
+from threading import Thread
 
-from starlette.routing import Route
+from starlette.routing import Route, WebSocketRoute
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,6 +25,7 @@ from handlers import (
 from containers import SingleThing, MultipleThings
 from utils import get_addresses, get_ip
 from test import make_thing
+from mixins import AsyncMixin
 
 
 class DefaultHeaderMiddleware(BaseHTTPMiddleware):
@@ -48,37 +50,29 @@ middlewares = [
 ]
 
 
-class WebThingServer:
+class WebThingServer(AsyncMixin):
     """Server to represent a Web Thing over HTTP."""
 
     def __init__(
-        self, things, port=8000, hostname=None, additional_routes=None, base_path=""
-    ):
-        print("before create")
-        return asyncio.run_coroutine_threadsafe(
-            self.create(things, port, hostname, additional_routes, base_path),
-            asyncio.get_running_loop(),
-        ).result()
-
-    async def create(
-        self, things, port=8000, hostname=None, additional_routes=None, base_path=""
+            self, loop, things_maker, port=8000, hostname=None, additional_routes=None, base_path=""
     ):
         """
         Initialize the WebThingServer.
         For documentation on the additional route format, see:
         https://www.starlette.io/applications/
-        things -- things managed by this server -- should be of type
+        loop -- event loop
+        things_maker -- make things managed by this server -- should be of type
                   SingleThing or MultipleThings
         port -- port to listen on (defaults to 80)
         hostname -- Optional host name, i.e. mything.com
         additional_routes -- list of additional routes to add to the server
         base_path -- base URL path to use, rather than '/'
         """
-        print(type(things))
-        self.things = things
-        self.name = await things.get_name()
+        self._loop = loop
+        self.things = self._run_async(things_maker())
         self.port = port
         self.hostname = hostname
+        self.additional_routes = additional_routes
         self.base_path = base_path.rstrip("/")
         print("create")
         system_hostname = socket.gethostname().lower()
@@ -100,6 +94,10 @@ class WebThingServer:
                 [self.hostname, f"{self.hostname}:{self.port}",]
             )
 
+    def build_routes(self):
+        return self._run_async(self._build_routes())
+
+    async def _build_routes(self):
         if isinstance(self.things, MultipleThings):
             for idx, thing in enumerate(await self.things.get_things()):
                 await thing.set_href_prefix(f"{self.base_path}/{idx}")
@@ -120,8 +118,10 @@ class WebThingServer:
         else:
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
+            des = await thing.as_thing_description()
+            print(des)
             routes = [
-                Route("/", ThingHandler),
+                WebSocketRoute("/", ThingHandler),
                 Route("/properties", PropertiesHandler),
                 Route("/properties/{property_name}", PropertyHandler),
                 Route("/actions", ActionsHandler),
@@ -131,17 +131,17 @@ class WebThingServer:
                 Route("/events/{event_name}", EventHandler),
             ]
 
-        if isinstance(additional_routes, list):
-            routes = additional_routes + routes
-
-        self.routes = routes
+        if isinstance(self.additional_routes, list):
+            routes = self.additional_routes + routes
 
         if self.base_path:
-            for h in self.routes:
+            for h in routes:
                 h[0] = self.base_path + h[0]
+        return routes
 
     async def start(self):
         """Start listening for incoming connections."""
+        self.name = await self.things.get_name()
         self.service_info = ServiceInfo(
             "_webthing._tcp.local.",
             f"{self.name}._webthing._tcp.local.",
@@ -161,21 +161,30 @@ class WebThingServer:
         print("stop")
 
 
-if __name__ == "__main__":
-    thing = asyncio.run_coroutine_threadsafe(
-        make_thing(), asyncio.get_running_loop()
-    ).result()
+@contextmanager
+def background_thread_loop():
+    def run_forever(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
 
-    print("before app")
-    server = WebThingServer(SingleThing(thing))
+    loop = asyncio.new_event_loop()
+    try:
+        thread = Thread(target=run_forever, args=(loop,))
+        thread.start()
+        yield loop
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join()
 
-    app = Starlette(
-        debug=True,
-        routes=server.routes,
-        on_startup=[server.start],
-        on_shutdown=[server.stop],
-    )
 
-    app.state.things = server.things
+with background_thread_loop() as loop:
+    server = WebThingServer(loop, make_thing)
+    routes = server.build_routes()
 
-    uvicorn.run("example:app", host="127.0.0.1", port=8000, log_level="info")
+print("before app")
+
+app = Starlette(
+    debug=True, routes=routes, on_startup=[server.start], on_shutdown=[server.stop],
+)
+
+app.state.things = server.things

@@ -10,7 +10,7 @@ from starlette.websockets import WebSocketDisconnect
 class Thing:
     """A Web Thing."""
 
-    def __init__(self, id_, title, type_=[], description=''):
+    def __init__(self, id_, title, type_=[], description=""):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -22,7 +22,7 @@ class Thing:
             type_ = [type_]
 
         self.id = id_
-        self.context = 'https://iot.mozilla.org/schemas'
+        self.context = "https://iot.mozilla.org/schemas"
         self.type = type_
         self.title = title
         self.description = description
@@ -32,7 +32,7 @@ class Thing:
         self.actions = {}
         self.events = []
         self.subscribers = set()
-        self.href_prefix = ''
+        self.href_prefix = ""
         self.ui_href = None
 
     async def as_thing_description(self):
@@ -41,58 +41,41 @@ class Thing:
         Returns the state as a dictionary.
         """
         thing = {
-            'id': self.id,
-            'title': self.title,
-            '@context': self.context,
-            'properties': await self.get_property_descriptions(),
-            'actions': {},
-            'events': {},
-            'links': [
-                {
-                    'rel': 'properties',
-                    'href': f"{self.href_prefix}/properties",
-                },
-                {
-                    'rel': 'actions',
-                    'href': f"{self.href_prefix}/actions",
-                },
-                {
-                    'rel': 'events',
-                    'href': f"{self.href_prefix}/events",
-                },
+            "id": self.id,
+            "title": self.title,
+            "@context": self.context,
+            "properties": await self.get_property_descriptions(),
+            "actions": {},
+            "events": {},
+            "links": [
+                {"rel": "properties", "href": f"{self.href_prefix}/properties",},
+                {"rel": "actions", "href": f"{self.href_prefix}/actions",},
+                {"rel": "events", "href": f"{self.href_prefix}/events",},
             ],
         }
 
         for name, action in self.available_actions.items():
-            thing['actions'][name] = action['metadata']
-            thing['actions'][name]['links'] = [
-                {
-                    'rel': 'action',
-                    'href': f"{self.href_prefix}/actions/{name}",
-                },
+            thing["actions"][name] = action["metadata"]
+            thing["actions"][name]["links"] = [
+                {"rel": "action", "href": f"{self.href_prefix}/actions/{name}",},
             ]
 
         for name, event in self.available_events.items():
-            thing['events'][name] = event['metadata']
-            thing['events'][name]['links'] = [
-                {
-                    'rel': 'event',
-                    'href': f"{self.href_prefix}/events/{name}",
-                },
+            thing["events"][name] = event["metadata"]
+            thing["events"][name]["links"] = [
+                {"rel": "event", "href": f"{self.href_prefix}/events/{name}",},
             ]
 
         if self.ui_href is not None:
-            thing['links'].append({
-                'rel': 'alternate',
-                'mediaType': 'text/html',
-                'href': self.ui_href,
-            })
+            thing["links"].append(
+                {"rel": "alternate", "mediaType": "text/html", "href": self.ui_href,}
+            )
 
         if self.description:
-            thing['description'] = self.description
+            thing["description"] = self.description
 
         if self.type:
-            thing['@type'] = self.type
+            thing["@type"] = self.type
 
         return thing
 
@@ -101,7 +84,7 @@ class Thing:
         if self.href_prefix:
             return self.href_prefix
 
-        return '/'
+        return "/"
 
     async def get_ui_href(self):
         """Get the UI href."""
@@ -168,8 +151,9 @@ class Thing:
         Get the thing's properties as a dictionary.
         Returns the properties as a dictionary, i.e. name -> description.
         """
-        return {k: await v.as_property_description()
-                for k, v in self.properties.items()}
+        return {
+            k: await v.as_property_description() for k, v in self.properties.items()
+        }
 
     async def get_action_descriptions(self, action_name=None):
         """
@@ -198,8 +182,11 @@ class Thing:
         if event_name is None:
             return [await e.as_event_description() for e in self.events]
         else:
-            return [await e.as_event_description()
-                    for e in self.events if await e.get_name() == event_name]
+            return [
+                await e.as_event_description()
+                for e in self.events
+                if await e.get_name() == event_name
+            ]
 
     async def add_property(self, property_):
         """
@@ -242,8 +229,10 @@ class Thing:
         Get a mapping of all properties and their values.
         Returns a dictionary of property_name -> value.
         """
-        return {await prop.get_name(): await prop.get_value()
-                for prop in self.properties.values()}
+        return {
+            await prop.get_name(): await prop.get_value()
+            for prop in self.properties.values()
+        }
 
     async def has_property(self, property_name):
         """
@@ -300,8 +289,8 @@ class Thing:
             metadata = {}
 
         self.available_events[name] = {
-            'metadata': metadata,
-            'subscribers': set(),
+            "metadata": metadata,
+            "subscribers": set(),
         }
 
     async def perform_action(self, action_name, input_=None):
@@ -316,13 +305,13 @@ class Thing:
 
         action_type = self.available_actions[action_name]
 
-        if 'input' in action_type['metadata']:
+        if "input" in action_type["metadata"]:
             try:
-                validate(input_, action_type['metadata']['input'])
+                validate(input_, action_type["metadata"]["input"])
             except ValidationError:
                 return None
 
-        action = action_type['class'](self, input_=input_)
+        action = action_type["class"](self, input_=input_)
         action.set_href_prefix(self.href_prefix)
         await self.action_notify(action)
         self.actions[action_name].append(action)
@@ -354,8 +343,8 @@ class Thing:
             metadata = {}
 
         self.available_actions[name] = {
-            'metadata': metadata,
-            'class': cls,
+            "metadata": metadata,
+            "class": cls,
         }
         self.actions[name] = []
 
@@ -384,7 +373,7 @@ class Thing:
         ws -- the websocket
         """
         if name in self.available_events:
-            self.available_events[name]['subscribers'].add(ws)
+            self.available_events[name]["subscribers"].add(ws)
 
     async def remove_event_subscriber(self, name, ws):
         """
@@ -392,21 +381,23 @@ class Thing:
         name -- name of the event
         ws -- the websocket
         """
-        if name in self.available_events and \
-                ws in self.available_events[name]['subscribers']:
-            self.available_events[name]['subscribers'].remove(ws)
+        if (
+            name in self.available_events
+            and ws in self.available_events[name]["subscribers"]
+        ):
+            self.available_events[name]["subscribers"].remove(ws)
 
     async def property_notify(self, property_):
         """
         Notify all subscribers of a property change.
         property_ -- the property that changed
         """
-        message = json.dumps({
-            'messageType': 'propertyStatus',
-            'data': {
-                property_.name: await property_.get_value(),
+        message = json.dumps(
+            {
+                "messageType": "propertyStatus",
+                "data": {property_.name: await property_.get_value(),},
             }
-        })
+        )
 
         for subscriber in list(self.subscribers):
             try:
@@ -419,10 +410,12 @@ class Thing:
         Notify all subscribers of an action status change.
         action -- the action whose status changed
         """
-        message = json.dumps({
-            'messageType': 'actionStatus',
-            'data': await action.as_action_description(),
-        })
+        message = json.dumps(
+            {
+                "messageType": "actionStatus",
+                "data": await action.as_action_description(),
+            }
+        )
 
         for subscriber in list(self.subscribers):
             try:
@@ -438,12 +431,11 @@ class Thing:
         if event.name not in self.available_events:
             return
 
-        message = json.dumps({
-            'messageType': 'event',
-            'data': await event.as_event_description(),
-        })
+        message = json.dumps(
+            {"messageType": "event", "data": await event.as_event_description(),}
+        )
 
-        for subscriber in self.available_events[event.name]['subscribers']:
+        for subscriber in self.available_events[event.name]["subscribers"]:
             try:
                 subscriber.send_json(message)
             except WebSocketDisconnect:
