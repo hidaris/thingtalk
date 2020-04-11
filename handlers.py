@@ -39,20 +39,20 @@ class ThingsHandler(BaseHandler):
         property_name -- the name of the property from the URL path
         """
         ws_href = "{}://{}".format(
-            "wss" if self.request.protocol == "https" else "ws",
-            self.request.headers.get("Host", ""),
+            "wss" if request.protocol == "https" else "ws",
+            request.headers.get("Host", ""),
         )
 
         descriptions = []
         async for thing in self.things.get_things():
-            description = thing.as_thing_description()
-            description["href"] = thing.get_href()
+            description = await thing.as_thing_description()
+            description["href"] = await thing.get_href()
             description["links"].append(
-                {"rel": "alternate", "href": f"{ws_href}{thing.get_href()}",}
+                {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}",}
             )
             description[
                 "base"
-            ] = f"{self.request.protocol}://{self.request.headers.get('Host', '')}{await thing.get_href()}"
+            ] = f"{request.protocol}://{request.headers.get('Host', '')}{await thing.get_href()}"
             description["securityDefinitions"] = {
                 "nosec_sc": {"scheme": "nosec",},
             }
@@ -62,7 +62,43 @@ class ThingsHandler(BaseHandler):
         return UJSONResponse(descriptions)
 
 
-class ThingHandler(WebSocketEndpoint):
+class ThingHandler(BaseHandler):
+    """Handle a request to /."""
+
+    async def get(self, request):
+        """
+        Handle a GET request, including websocket requests.
+        thing_id -- ID of the thing this request is for
+        """
+        thing_id = request.query_params.get("thing_id", "0")
+        self.thing = await self.get_thing(thing_id)
+        if self.thing is None:
+            raise HTTPException(status_code=404)
+
+        if request.url.scheme == "https":
+            scheme = "wss"
+        else:
+            scheme = "ws"
+        ws_href = "{}://{}".format(scheme, request.headers.get("Host", ""))
+
+        description = await self.thing.as_thing_description()
+        description["links"].append(
+            {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}",}
+        )
+        description["base"] = "{}://{}{}".format(
+            request.url.scheme,
+            request.headers.get("Host", ""),
+            await self.thing.get_href(),
+        )
+        description["securityDefinitions"] = {
+            "nosec_sc": {"scheme": "nosec",},
+        }
+        description["security"] = "nosec_sc"
+
+        return UJSONResponse(description)
+
+
+class WsThingHandler(WebSocketEndpoint):
     """Handle a request to /."""
 
     encoding = "json"
@@ -76,7 +112,6 @@ class ThingHandler(WebSocketEndpoint):
         """
         websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
         things = websocket.app.state.things
-        print(things)
         return await things.get_thing(thing_id)
 
     async def on_connect(self, websocket):
@@ -85,12 +120,13 @@ class ThingHandler(WebSocketEndpoint):
         thing_id -- ID of the thing this request is for
         """
         await websocket.accept()
+
         thing_id = websocket.path_params.get("thing_id", "0")
         self.thing = await self.get_thing(thing_id)
         if self.thing is None:
             raise HTTPException(status_code=404)
 
-        # self.set_header('Content-Type', 'application/json')
+        await self.thing.add_subscriber(websocket)
         ws_href = "{}://{}".format(
             websocket.url.scheme, websocket.headers.get("Host", "")
         )
@@ -111,20 +147,16 @@ class ThingHandler(WebSocketEndpoint):
 
         await websocket.send_json(description, mode="binary")
 
-    def open(self):
-        """Handle a new connection."""
-        self.thing.add_subscriber(self)
-
     async def on_receive(self, websocket, data):
         """
         Handle an incoming message.
         message -- message to handle
         """
         try:
-            message = json.loads(data)
+            message = data
         except ValueError:
             try:
-                websocket.send_json(
+                await websocket.send_json(
                     {
                         "messageType": "error",
                         "data": {
@@ -141,7 +173,7 @@ class ThingHandler(WebSocketEndpoint):
 
         if "messageType" not in message or "data" not in message:
             try:
-                websocket.send_json(
+                await websocket.send_json(
                     {
                         "messageType": "error",
                         "data": {
@@ -162,7 +194,7 @@ class ThingHandler(WebSocketEndpoint):
                 try:
                     await self.thing.set_property(property_name, property_value)
                 except PropertyError as e:
-                    websocket.send_json(
+                    await websocket.send_json(
                         {
                             "messageType": "error",
                             "data": {"status": "400 Bad Request", "message": str(e),},
@@ -179,7 +211,7 @@ class ThingHandler(WebSocketEndpoint):
                 if action:
                     asyncio.create_task(perform_action(action))
                 else:
-                    websocket.send_json(
+                    await websocket.send_json(
                         {
                             "messageType": "error",
                             "data": {
@@ -192,10 +224,10 @@ class ThingHandler(WebSocketEndpoint):
                     )
         elif msg_type == "addEventSubscription":
             for event_name in message["data"].keys():
-                await self.thing.add_event_subscriber(event_name, self)
+                await self.thing.add_event_subscriber(event_name, websocket)
         else:
             try:
-                websocket.send_json(
+                await websocket.send_json(
                     {
                         "messageType": "error",
                         "data": {
@@ -209,49 +241,9 @@ class ThingHandler(WebSocketEndpoint):
             except WebSocketDisconnect:
                 pass
 
-    async def on_disconnect(self, websocket):
+    async def on_disconnect(self, websocket, close_code):
         """Handle a close event on the socket."""
-        await self.thing.remove_subscriber(self)
-
-    def check_origin(self, origin):
-        """Allow connections from all origins."""
-        return True
-
-    def update_property(self, property_):
-        """
-        Send an update about a Property.
-        :param property_: Property
-        """
-        message = json.dumps(
-            {
-                "messageType": "propertyStatus",
-                "data": {property_.name: property_.get_value(),},
-            }
-        )
-
-        self.write_message(message)
-
-    def update_action(self, action):
-        """
-        Send an update about an Action.
-        :param action: Action
-        """
-        message = json.dumps(
-            {"messageType": "actionStatus", "data": action.as_action_description(),}
-        )
-
-        self.write_message(message)
-
-    def update_event(self, event):
-        """
-        Send an update about an Event.
-        :param event: Event
-        """
-        message = json.dumps(
-            {"messageType": "event", "data": event.as_event_description(),}
-        )
-
-        self.write_message(message)
+        await self.thing.remove_subscriber(websocket)
 
 
 class PropertiesHandler(BaseHandler):
@@ -267,7 +259,7 @@ class PropertiesHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(thing.get_properties())
+        return UJSONResponse(await thing.get_properties())
 
 
 class PropertyHandler(BaseHandler):
@@ -286,8 +278,10 @@ class PropertyHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        if thing.has_property(property_name):
-            return UJSONResponse({property_name: thing.get_property(property_name),})
+        if await thing.has_property(property_name):
+            return UJSONResponse(
+                {property_name: await thing.get_property(property_name),}
+            )
         else:
             raise HTTPException(status_code=404)
 
@@ -305,20 +299,22 @@ class PropertyHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            args = json.loads(self.request.body.decode())
+            args = json.loads(await request.json())
         except ValueError:
             raise HTTPException(status_code=400)
 
         if property_name not in args:
             raise HTTPException(status_code=400)
 
-        if thing.has_property(property_name):
+        if await thing.has_property(property_name):
             try:
-                thing.set_property(property_name, args[property_name])
+                await thing.set_property(property_name, args[property_name])
             except PropertyError:
                 raise HTTPException(status_code=400)
 
-            return UJSONResponse({property_name: thing.get_property(property_name),})
+            return UJSONResponse(
+                {property_name: await thing.get_property(property_name),}
+            )
         else:
             raise HTTPException(status_code=404)
 
@@ -337,7 +333,7 @@ class ActionsHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(thing.get_action_descriptions())
+        return UJSONResponse(await thing.get_action_descriptions())
 
     async def post(self, request):
         """
@@ -351,7 +347,7 @@ class ActionsHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            message = json.loads(self.request.body.decode())
+            message = json.loads(await request.json())
         except ValueError:
             raise HTTPException(status_code=404)
 
@@ -361,9 +357,9 @@ class ActionsHandler(BaseHandler):
             if "input" in action_params:
                 input_ = action_params["input"]
 
-            action = thing.perform_action(action_name, input_)
+            action = await thing.perform_action(action_name, input_)
             if action:
-                response.update(action.as_action_description())
+                response.update(await action.as_action_description())
 
                 # Start the action
                 asyncio.create_task(perform_action(action))
@@ -387,7 +383,9 @@ class ActionHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(thing.get_action_descriptions(action_name=action_name))
+        return UJSONResponse(
+            await thing.get_action_descriptions(action_name=action_name)
+        )
 
     async def post(self, request):
         """
@@ -403,7 +401,7 @@ class ActionHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            message = json.loads(self.request.body.decode())
+            message = json.loads(await request.json())
         except ValueError:
             raise HTTPException(status_code=404)
 
@@ -416,9 +414,9 @@ class ActionHandler(BaseHandler):
             if "input" in action_params:
                 input_ = action_params["input"]
 
-            action = thing.perform_action(name, input_)
+            action = await thing.perform_action(name, input_)
             if action:
-                response.update(action.as_action_description())
+                response.update(await action.as_action_description())
 
                 # Start the action
                 asyncio.create_task(perform_action(action))
@@ -438,17 +436,17 @@ class ActionIDHandler(BaseHandler):
         """
         thing_id = request.path_params.get("thing_id", "0")
         action_name = request.path_params.get("action_name", None)
-        action_id = request.path_params.get("action_name", None)
+        action_id = request.path_params.get("action_id", None)
 
         thing = await self.get_thing(thing_id)
         if thing is None:
             raise HTTPException(status_code=404)
 
-        action = thing.get_action(action_name, action_id)
+        action = await thing.get_action(action_name, action_id)
         if action is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(action.as_action_description())
+        return UJSONResponse(await action.as_action_description())
 
     async def put(self, request):
         """
@@ -460,13 +458,13 @@ class ActionIDHandler(BaseHandler):
         """
         thing_id = request.path_params.get("thing_id", "0")
         action_name = request.path_params.get("action_name", None)
-        action_id = request.path_params.get("action_name", None)
+        action_id = request.path_params.get("action_id", None)
 
         thing = await self.get_thing(thing_id)
         if thing is None:
             raise HTTPException(status_code=404)
 
-        self.set_status(200)
+        return UJSONResponse({"msg": "success"}, status_code=200)
 
     async def delete(self, request):
         """
@@ -477,14 +475,14 @@ class ActionIDHandler(BaseHandler):
         """
         thing_id = request.path_params.get("thing_id", "0")
         action_name = request.path_params.get("action_name", None)
-        action_id = request.path_params.get("action_name", None)
+        action_id = request.path_params.get("action_id", None)
 
         thing = await self.get_thing(thing_id)
         if thing is None:
             raise HTTPException(status_code=404)
 
-        if thing.remove_action(action_name, action_id):
-            self.set_status(204)
+        if await thing.remove_action(action_name, action_id):
+            return UJSONResponse({"msg": "success"}, status_code=204)
         else:
             raise HTTPException(status_code=404)
 
@@ -503,7 +501,7 @@ class EventsHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(thing.get_event_descriptions())
+        return UJSONResponse(await thing.get_event_descriptions())
 
 
 class EventHandler(BaseHandler):
@@ -522,4 +520,4 @@ class EventHandler(BaseHandler):
         if thing is None:
             raise HTTPException(status_code=404)
 
-        return UJSONResponse(thing.get_event_descriptions(event_name=event_name))
+        return UJSONResponse(await thing.get_event_descriptions(event_name=event_name))

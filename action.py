@@ -87,9 +87,9 @@ class Action:
     async def start(self):
         """Start performing the action."""
         self.status = "pending"
-        self.thing.action_notify(self)
-        self.perform_action()
-        self.finish()
+        await self.thing.action_notify(self)
+        await self.perform_action()
+        await self.finish()
 
     async def perform_action(self):
         """Override this with the code necessary to perform the action."""
@@ -103,4 +103,4 @@ class Action:
         """Finish performing the action."""
         self.status = "completed"
         self.time_completed = timestamp()
-        self.thing.action_notify(self)
+        await self.thing.action_notify(self)

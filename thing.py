@@ -31,7 +31,7 @@ class Thing:
         self.available_events = {}
         self.actions = {}
         self.events = []
-        self.subscribers = set()
+        self.subscribers = {}
         self.href_prefix = ""
         self.ui_href = None
 
@@ -218,7 +218,7 @@ class Thing:
         property_name -- the property to get the value of
         Returns the properties value, if found, else None.
         """
-        prop = self.find_property(property_name)
+        prop = await self.find_property(property_name)
         if prop:
             return await prop.get_value()
 
@@ -249,11 +249,11 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
-        prop = self.find_property(property_name)
+        prop = await self.find_property(property_name)
         if not prop:
             return
 
-        prop.set_value(value)
+        await prop.set_value(value)
 
     async def get_action(self, action_name, action_id):
         """
@@ -290,7 +290,7 @@ class Thing:
 
         self.available_events[name] = {
             "metadata": metadata,
-            "subscribers": set(),
+            "subscribers": {},
         }
 
     async def perform_action(self, action_name, input_=None):
@@ -312,7 +312,7 @@ class Thing:
                 return None
 
         action = action_type["class"](self, input_=input_)
-        action.set_href_prefix(self.href_prefix)
+        await action.set_href_prefix(self.href_prefix)
         await self.action_notify(action)
         self.actions[action_name].append(action)
         return action
@@ -353,15 +353,16 @@ class Thing:
         Add a new websocket subscriber.
         ws -- the websocket
         """
-        self.subscribers.add(ws)
+        if id(ws) not in self.subscribers:
+            self.subscribers[id(ws)] = ws
 
     async def remove_subscriber(self, ws):
         """
         Remove a websocket subscriber.
         ws -- the websocket
         """
-        if ws in self.subscribers:
-            self.subscribers.remove(ws)
+        if id(ws) in self.subscribers:
+            self.subscribers.pop(id(ws))
 
         for name in self.available_events:
             await self.remove_event_subscriber(name, ws)
@@ -373,7 +374,8 @@ class Thing:
         ws -- the websocket
         """
         if name in self.available_events:
-            self.available_events[name]["subscribers"].add(ws)
+            if id(ws) not in self.available_events[name]["subscribers"]:
+                self.available_events[name]["subscribers"][id(ws)] = ws
 
     async def remove_event_subscriber(self, name, ws):
         """
@@ -383,25 +385,23 @@ class Thing:
         """
         if (
             name in self.available_events
-            and ws in self.available_events[name]["subscribers"]
+            and id(ws) in self.available_events[name]["subscribers"]
         ):
-            self.available_events[name]["subscribers"].remove(ws)
+            self.available_events[name]["subscribers"].pop(id(ws))
 
     async def property_notify(self, property_):
         """
         Notify all subscribers of a property change.
         property_ -- the property that changed
         """
-        message = json.dumps(
-            {
-                "messageType": "propertyStatus",
-                "data": {property_.name: await property_.get_value(),},
-            }
-        )
+        message = {
+            "messageType": "propertyStatus",
+            "data": {property_.name: await property_.get_value(),},
+        }
 
-        for subscriber in list(self.subscribers):
+        for subscriber in self.subscribers.values():
             try:
-                subscriber.send_json(message)
+                await subscriber.send_json(message, mode="binary")
             except WebSocketDisconnect:
                 pass
 
@@ -410,16 +410,14 @@ class Thing:
         Notify all subscribers of an action status change.
         action -- the action whose status changed
         """
-        message = json.dumps(
-            {
-                "messageType": "actionStatus",
-                "data": await action.as_action_description(),
-            }
-        )
+        message = {
+            "messageType": "actionStatus",
+            "data": await action.as_action_description(),
+        }
 
-        for subscriber in list(self.subscribers):
+        for subscriber in self.subscribers.values():
             try:
-                subscriber.send_json(message)
+                await subscriber.send_json(message, mode="binary")
             except WebSocketDisconnect:
                 pass
 
@@ -431,12 +429,13 @@ class Thing:
         if event.name not in self.available_events:
             return
 
-        message = json.dumps(
-            {"messageType": "event", "data": await event.as_event_description(),}
-        )
+        message = {
+            "messageType": "event",
+            "data": await event.as_event_description(),
+        }
 
-        for subscriber in self.available_events[event.name]["subscribers"]:
+        for subscriber in self.available_events[event.name]["subscribers"].values():
             try:
-                subscriber.send_json(message)
+                await subscriber.send_json(message, mode="binary")
             except WebSocketDisconnect:
                 pass

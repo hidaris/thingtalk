@@ -1,8 +1,9 @@
 """Python Web Thing server implementation."""
 
-from zeroconf import ServiceInfo, Zeroconf
 import socket
 import asyncio
+
+from zeroconf import ServiceInfo, Zeroconf
 from contextlib import contextmanager
 from threading import Thread
 
@@ -14,12 +15,14 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from handlers import (
     ThingHandler,
+    WsThingHandler,
     ThingsHandler,
     PropertyHandler,
     EventHandler,
     PropertiesHandler,
     ActionHandler,
     ActionsHandler,
+    ActionIDHandler,
     EventsHandler,
 )
 from containers import SingleThing, MultipleThings
@@ -54,7 +57,13 @@ class WebThingServer(AsyncMixin):
     """Server to represent a Web Thing over HTTP."""
 
     def __init__(
-            self, loop, things_maker, port=8000, hostname=None, additional_routes=None, base_path=""
+        self,
+        loop,
+        things_maker,
+        port=8000,
+        hostname=None,
+        additional_routes=None,
+        base_path="",
     ):
         """
         Initialize the WebThingServer.
@@ -74,7 +83,6 @@ class WebThingServer(AsyncMixin):
         self.hostname = hostname
         self.additional_routes = additional_routes
         self.base_path = base_path.rstrip("/")
-        print("create")
         system_hostname = socket.gethostname().lower()
         self.hosts = [
             "localhost",
@@ -106,29 +114,32 @@ class WebThingServer(AsyncMixin):
                 Route("/", ThingsHandler),
                 Route("/{thing_id:int}", ThingHandler),
                 Route("/{thing_id:int}/properties", PropertiesHandler),
-                Route("/{thing_id:int}/properties/{property_name}", PropertyHandler),
-                Route("/{thing_id:int}/actions", ActionsHandler),
-                Route("/{thing_id:int}/actions/{action_name}", ActionHandler),
                 Route(
-                    "/{thing_id:int}/actions/{action_name}/{action_id}", ActionHandler
+                    "/{thing_id:int}/properties/{property_name:str}", PropertyHandler
+                ),
+                Route("/{thing_id:int}/actions", ActionsHandler),
+                Route("/{thing_id:int}/actions/{action_name:str}", ActionHandler),
+                Route(
+                    "/{thing_id:int}/actions/{action_name:str}/{action_id}",
+                    ActionHandler,
                 ),
                 Route("/{thing_id:int}/events", EventHandler),
-                Route("/{thing_id:int}/events/{event_name}", EventHandler),
+                Route("/{thing_id:int}/events/{event_name:str}", EventHandler),
             ]
         else:
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
             des = await thing.as_thing_description()
-            print(des)
             routes = [
-                WebSocketRoute("/", ThingHandler),
+                Route("/", ThingHandler),
+                WebSocketRoute("/", WsThingHandler),
                 Route("/properties", PropertiesHandler),
-                Route("/properties/{property_name}", PropertyHandler),
+                Route("/properties/{property_name:str}", PropertyHandler),
                 Route("/actions", ActionsHandler),
-                Route("/actions/{action_name}", ActionHandler),
-                Route("/actions/{action_name}/{action_id}", ActionHandler),
+                Route("/actions/{action_name:str}", ActionHandler),
+                Route("/actions/{action_name:str}/{action_id:str}", ActionIDHandler),
                 Route("/events", EventsHandler),
-                Route("/events/{event_name}", EventHandler),
+                Route("/events/{event_name:str}", EventHandler),
             ]
 
         if isinstance(self.additional_routes, list):
@@ -152,13 +163,12 @@ class WebThingServer(AsyncMixin):
         )
         self.zeroconf = Zeroconf()
         self.zeroconf.register_service(self.service_info)
-        print("start")
+        print(self.service_info)
 
     async def stop(self):
         """Stop listening."""
         self.zeroconf.unregister_service(self.service_info)
         self.zeroconf.close()
-        print("stop")
 
 
 @contextmanager
@@ -180,8 +190,6 @@ def background_thread_loop():
 with background_thread_loop() as loop:
     server = WebThingServer(loop, make_thing)
     routes = server.build_routes()
-
-print("before app")
 
 app = Starlette(
     debug=True, routes=routes, on_startup=[server.start], on_shutdown=[server.stop],
