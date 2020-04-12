@@ -28,6 +28,8 @@ from handlers import (
 from containers import SingleThing, MultipleThings
 from utils import get_addresses, get_ip
 from test import make_thing
+
+# from file_thing import FileThing
 from mixins import AsyncMixin
 
 
@@ -107,24 +109,25 @@ class WebThingServer(AsyncMixin):
 
     async def _build_routes(self):
         if isinstance(self.things, MultipleThings):
-            for idx, thing in enumerate(await self.things.get_things()):
-                await thing.set_href_prefix(f"{self.base_path}/{idx}")
+            # for idx, thing in enumerate(await self.things.get_things()):
+            for idx, thing in await self.things.get_things():
+                await thing.set_href_prefix(f"/things{self.base_path}/{idx}")
 
             routes = [
                 Route("/", ThingsHandler),
-                Route("/{thing_id:int}", ThingHandler),
-                Route("/{thing_id:int}/properties", PropertiesHandler),
+                Route("/{thing_id:str}", ThingHandler),
+                Route("/{thing_id:str}/properties", PropertiesHandler),
                 Route(
-                    "/{thing_id:int}/properties/{property_name:str}", PropertyHandler
+                    "/{thing_id:str}/properties/{property_name:str}", PropertyHandler
                 ),
-                Route("/{thing_id:int}/actions", ActionsHandler),
-                Route("/{thing_id:int}/actions/{action_name:str}", ActionHandler),
+                Route("/{thing_id:str}/actions", ActionsHandler),
+                Route("/{thing_id:str}/actions/{action_name:str}", ActionHandler),
                 Route(
-                    "/{thing_id:int}/actions/{action_name:str}/{action_id}",
+                    "/{thing_id:str}/actions/{action_name:str}/{action_id}",
                     ActionHandler,
                 ),
-                Route("/{thing_id:int}/events", EventHandler),
-                Route("/{thing_id:int}/events/{event_name:str}", EventHandler),
+                Route("/{thing_id:str}/events", EventHandler),
+                Route("/{thing_id:str}/events/{event_name:str}", EventHandler),
             ]
         else:
             thing = await self.things.get_thing()
@@ -163,7 +166,7 @@ class WebThingServer(AsyncMixin):
         )
         self.zeroconf = Zeroconf()
         self.zeroconf.register_service(self.service_info)
-        print(self.service_info)
+        # print(self.service_info)
 
     async def stop(self):
         """Stop listening."""
@@ -188,6 +191,7 @@ def background_thread_loop():
 
 
 with background_thread_loop() as loop:
+    # server = WebThingServer(loop, FileThing().build)
     server = WebThingServer(loop, make_thing)
     routes = server.build_routes()
 

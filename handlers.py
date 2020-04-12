@@ -39,12 +39,13 @@ class ThingsHandler(BaseHandler):
         property_name -- the name of the property from the URL path
         """
         ws_href = "{}://{}".format(
-            "wss" if request.protocol == "https" else "ws",
+            "wss" if request.url.scheme == "https" else "ws",
             request.headers.get("Host", ""),
         )
+        self.things = request.app.state.things
 
         descriptions = []
-        async for thing in self.things.get_things():
+        for idx, thing in await self.things.get_things():
             description = await thing.as_thing_description()
             description["href"] = await thing.get_href()
             description["links"].append(
@@ -52,7 +53,7 @@ class ThingsHandler(BaseHandler):
             )
             description[
                 "base"
-            ] = f"{request.protocol}://{request.headers.get('Host', '')}{await thing.get_href()}"
+            ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
             description["securityDefinitions"] = {
                 "nosec_sc": {"scheme": "nosec",},
             }
@@ -70,7 +71,8 @@ class ThingHandler(BaseHandler):
         Handle a GET request, including websocket requests.
         thing_id -- ID of the thing this request is for
         """
-        thing_id = request.query_params.get("thing_id", "0")
+        thing_id = request.path_params.get("thing_id", "0")
+        print(thing_id)
         self.thing = await self.get_thing(thing_id)
         if self.thing is None:
             raise HTTPException(status_code=404)
@@ -356,7 +358,7 @@ class ActionsHandler(BaseHandler):
             input_ = None
             if "input" in action_params:
                 input_ = action_params["input"]
-
+            print(input_)
             action = await thing.perform_action(action_name, input_)
             if action:
                 response.update(await action.as_action_description())

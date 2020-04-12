@@ -164,6 +164,7 @@ class Thing:
         descriptions = []
 
         if action_name is None:
+            print(self.actions)
             for name in self.actions:
                 for action in self.actions[name]:
                     descriptions.append(await action.as_action_description())
@@ -249,6 +250,7 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
+        print(value)
         prop = await self.find_property(property_name)
         if not prop:
             return

@@ -38,19 +38,19 @@ class MultipleThings:
         Get the thing at the given index.
         idx -- the index
         """
-        try:
-            idx = int(idx)
-        except ValueError:
-            return None
+        # try:
+        #     idx = int(idx)
+        # except ValueError:
+        #     return None
 
-        if idx < 0 or idx >= len(self.things):
-            return None
+        # if idx < 0 or idx >= len(self.things):
+        #     return None
 
         return self.things[idx]
 
     async def get_things(self):
         """Get the list of things."""
-        return self.things
+        return self.things.items()
 
     async def get_name(self):
         """Get the mDNS server name."""
