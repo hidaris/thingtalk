@@ -1,6 +1,6 @@
 """High-level Action base class implementation."""
 
-from utils import timestamp
+from .utils import timestamp
 
 
 class Action:

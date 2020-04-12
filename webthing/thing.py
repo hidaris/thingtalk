@@ -1,6 +1,5 @@
 """High-level Thing base class implementation."""
 
-import ujson as json
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 

@@ -1,8 +1,5 @@
 """High-level Event base class implementation."""
-from typing import Optional, Dict, Any
-
-from thing import Thing
-from utils import timestamp
+from .utils import timestamp
 
 
 class Event:
@@ -20,7 +17,7 @@ class Event:
         self.data = data
         self.time = timestamp()
 
-    async def as_event_description(self) -> Dict[str, Any]:
+    async def as_event_description(self):
         """
         Get the event description.
         Returns a dictionary describing the event.
@@ -34,15 +31,15 @@ class Event:
 
         return description
 
-    async def get_thing(self) -> Thing:
+    async def get_thing(self):
         """Get the thing associated with this event."""
         return self.thing
 
-    async def get_name(self) -> str:
+    async def get_name(self):
         """Get the event's name."""
         return self.name
 
-    async def get_data(self) -> Dict[str, Any]:
+    async def get_data(self):
         """Get the event's data."""
         return self.data
 

@@ -7,7 +7,7 @@ from starlette.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 
-from errors import PropertyError
+from .errors import PropertyError
 
 
 async def perform_action(action):
@@ -72,16 +72,14 @@ class ThingHandler(BaseHandler):
         thing_id -- ID of the thing this request is for
         """
         thing_id = request.path_params.get("thing_id", "0")
-        print(thing_id)
         self.thing = await self.get_thing(thing_id)
         if self.thing is None:
             raise HTTPException(status_code=404)
 
-        if request.url.scheme == "https":
-            scheme = "wss"
-        else:
-            scheme = "ws"
-        ws_href = "{}://{}".format(scheme, request.headers.get("Host", ""))
+        ws_href = "{}://{}".format(
+            "wss" if request.url.scheme == "https" else "ws",
+            request.headers.get("Host", ""),
+        )
 
         description = await self.thing.as_thing_description()
         description["links"].append(
@@ -149,29 +147,29 @@ class WsThingHandler(WebSocketEndpoint):
 
         await websocket.send_json(description, mode="binary")
 
-    async def on_receive(self, websocket, data):
+    async def on_receive(self, websocket, message):
         """
         Handle an incoming message.
         message -- message to handle
         """
-        try:
-            message = data
-        except ValueError:
-            try:
-                await websocket.send_json(
-                    {
-                        "messageType": "error",
-                        "data": {
-                            "status": "400 Bad Request",
-                            "message": "Parsing request failed",
-                        },
-                    },
-                    mode="binary",
-                )
-            except WebSocketDisconnect:
-                pass
+        # try:
+        #     message = data
+        # except ValueError:
+        #     try:
+        #         await websocket.send_json(
+        #             {
+        #                 "messageType": "error",
+        #                 "data": {
+        #                     "status": "400 Bad Request",
+        #                     "message": "Parsing request failed",
+        #                 },
+        #             },
+        #             mode="binary",
+        #         )
+        #     except WebSocketDisconnect:
+        #         pass
 
-            return
+        #     return
 
         if "messageType" not in message or "data" not in message:
             try:

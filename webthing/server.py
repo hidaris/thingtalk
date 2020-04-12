@@ -1,11 +1,8 @@
 """Python Web Thing server implementation."""
 
 import socket
-import asyncio
 
 from zeroconf import ServiceInfo, Zeroconf
-from contextlib import contextmanager
-from threading import Thread
 
 from starlette.routing import Route, WebSocketRoute
 from starlette.applications import Starlette
@@ -13,7 +10,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from handlers import (
+from .handlers import (
     ThingHandler,
     WsThingHandler,
     ThingsHandler,
@@ -25,12 +22,9 @@ from handlers import (
     ActionIDHandler,
     EventsHandler,
 )
-from containers import SingleThing, MultipleThings
-from utils import get_addresses, get_ip
-from test import make_thing
-
-# from file_thing import FileThing
-from mixins import AsyncMixin
+from .containers import SingleThing, MultipleThings
+from .utils import get_addresses, get_ip
+from .mixins import AsyncMixin
 
 
 class DefaultHeaderMiddleware(BaseHTTPMiddleware):
@@ -104,10 +98,10 @@ class WebThingServer(AsyncMixin):
                 [self.hostname, f"{self.hostname}:{self.port}",]
             )
 
-    def build_routes(self):
-        return self._run_async(self._build_routes())
+    def create(self):
+        return self._run_async(self._create())
 
-    async def _build_routes(self):
+    async def _create(self):
         if isinstance(self.things, MultipleThings):
             # for idx, thing in enumerate(await self.things.get_things()):
             for idx, thing in await self.things.get_things():
@@ -132,7 +126,7 @@ class WebThingServer(AsyncMixin):
         else:
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
-            des = await thing.as_thing_description()
+
             routes = [
                 Route("/", ThingHandler),
                 WebSocketRoute("/", WsThingHandler),
@@ -151,52 +145,30 @@ class WebThingServer(AsyncMixin):
         if self.base_path:
             for h in routes:
                 h[0] = self.base_path + h[0]
-        return routes
+
+        app = Starlette(
+            debug=True, routes=routes, on_startup=[self.start], on_shutdown=[self.stop],
+        )
+
+        app.state.things = self.things
+
+        return app
 
     async def start(self):
         """Start listening for incoming connections."""
-        self.name = await self.things.get_name()
-        self.service_info = ServiceInfo(
+        name = await self.things.get_name()
+        service_info = ServiceInfo(
             "_webthing._tcp.local.",
-            f"{self.name}._webthing._tcp.local.",
+            f"{name}._webthing._tcp.local.",
             address=socket.inet_aton(get_ip()),
             port=self.port,
             properties={"path": "/",},
             server=f"{socket.gethostname()}.local.",
         )
         self.zeroconf = Zeroconf()
-        self.zeroconf.register_service(self.service_info)
-        # print(self.service_info)
+        self.zeroconf.register_service(service_info)
 
     async def stop(self):
         """Stop listening."""
         self.zeroconf.unregister_service(self.service_info)
         self.zeroconf.close()
-
-
-@contextmanager
-def background_thread_loop():
-    def run_forever(loop):
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
-
-    loop = asyncio.new_event_loop()
-    try:
-        thread = Thread(target=run_forever, args=(loop,))
-        thread.start()
-        yield loop
-    finally:
-        loop.call_soon_threadsafe(loop.stop)
-        thread.join()
-
-
-with background_thread_loop() as loop:
-    # server = WebThingServer(loop, FileThing().build)
-    server = WebThingServer(loop, make_thing)
-    routes = server.build_routes()
-
-app = Starlette(
-    debug=True, routes=routes, on_startup=[server.start], on_shutdown=[server.stop],
-)
-
-app.state.things = server.things
