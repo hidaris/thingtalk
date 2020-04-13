@@ -1,24 +1,30 @@
-aiowebthing
+# aiowebthing
 
 Async implementation of an HTTP Web Thing. This library is compatible with 3.6+.
 
-Installation
+## Installation
 webthing can be installed via pip, as such:
 
 `$ pip install aiowebthing`
-Running the Sample
-`$ wget https://raw.githubusercontent.com/mozilla-iot/webthing-python/master/example/single-thing.py`
+
+## Running the Sample
+`$ wget
+https://raw.githubusercontent.com/mozilla-iot/webthing-python/master/example/single-thing.py`
+
 `$ uvicorn single-thing:app --reload`
+
 This starts a server and lets you search for it from your gateway through mDNS. To add it to your gateway, navigate to the Things page in the gateway's UI and click the + icon at the bottom right. If both are on the same network, the example thing will automatically appear.
 
-Example Implementation
+## Example Implementation
 In this code-walkthrough we will set up a dimmable light and a humidity sensor (both using fake data, of course). Both working examples can be found in here.
 
 Dimmable Light
 Imagine you have a dimmable light that you want to expose via the web of things API. The light can be turned on/off and the brightness can be set from 0% to 100%. Besides the name, description, and type, a Light is required to expose two properties:
 
 on: the state of the light, whether it is turned on or off
-Setting this property via a PUT {"on": true/false} call to the REST API toggles the light.
+Setting this property via a PUT {"on": true/false} call to the REST API toggles
+the light.
+
 brightness: the brightness level of the light from 0-100%
 Setting this property via a PUT call to the REST API sets the brightness level of this light.
 First we create a new Thing:
