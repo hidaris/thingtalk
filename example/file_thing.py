@@ -5,13 +5,20 @@ import time
 
 from starlette.concurrency import run_in_threadpool
 
-from thing import Thing
-from property import Property
-from value import Value
-from action import Action
-from event import Event
-from containers import SingleThing, MultipleThings
+from webthing import (
+    Thing,
+    Property,
+    Value,
+    Action,
+    Event,
+    SingleThing,
+    MultipleThings,
+    WebThingServer,
+    background_thread_loop,
+)
+
 import aiofiles
+
 
 # class OverheatedEvent(Event):
 #     def __init__(self, thing, data):
@@ -112,3 +119,7 @@ class FileThing(Thing):
 
         # return MultipleThings([self], "File things")
         return MultipleThings({self.id: self}, "File things")
+
+
+with background_thread_loop() as loop:
+    app = WebThingServer(loop, FileThing().build).create()

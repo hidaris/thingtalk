@@ -60,6 +60,8 @@ class WebThingServer(AsyncMixin):
         hostname=None,
         additional_routes=None,
         base_path="",
+        additional_on_startup=None,
+        additional_on_shutdown=None,
     ):
         """
         Initialize the WebThingServer.
@@ -72,6 +74,8 @@ class WebThingServer(AsyncMixin):
         hostname -- Optional host name, i.e. mything.com
         additional_routes -- list of additional routes to add to the server
         base_path -- base URL path to use, rather than '/'
+        additional_on_startup -- list of additional starup event handlers
+        additional_on_shutdown -- list of additional shutdown event handlers
         """
         self._loop = loop
         self.things = self._run_async(things_maker())
@@ -79,6 +83,8 @@ class WebThingServer(AsyncMixin):
         self.hostname = hostname
         self.additional_routes = additional_routes
         self.base_path = base_path.rstrip("/")
+        self.additional_on_startup = additional_on_startup
+        self.additional_on_shutdown = additional_on_shutdown
         system_hostname = socket.gethostname().lower()
         self.hosts = [
             "localhost",
@@ -146,8 +152,18 @@ class WebThingServer(AsyncMixin):
             for h in routes:
                 h[0] = self.base_path + h[0]
 
+        on_startups = [self.start]
+        if self.additional_on_startup:
+            assert isinstance(self.additional_on_startup, list)
+            on_startups.extend(self.additional_on_startup)
+
+        on_shutdowns = [self.stop]
+        if self.additional_on_shutdown:
+            assert isinstance(self.additional_on_shutdown, list)
+            on_shutdowns.extend(self.additional_on_shutdown)
+
         app = Starlette(
-            debug=True, routes=routes, on_startup=[self.start], on_shutdown=[self.stop],
+            debug=True, routes=routes, on_startup=on_startups, on_shutdown=on_shutdowns,
         )
 
         app.state.things = self.things
