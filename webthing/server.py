@@ -116,6 +116,7 @@ class WebThingServer(AsyncMixin):
             routes = [
                 Route("/", ThingsHandler),
                 Route("/{thing_id:str}", ThingHandler),
+                WebSocketRoute("/{thing_id:str}", WsThingHandler),
                 Route("/{thing_id:str}/properties", PropertiesHandler),
                 Route(
                     "/{thing_id:str}/properties/{property_name:str}", PropertyHandler
