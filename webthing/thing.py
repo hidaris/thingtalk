@@ -3,6 +3,7 @@
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from websockets import ConnectionClosedOK
 from starlette.websockets import WebSocketDisconnect
 
 
@@ -47,27 +48,27 @@ class Thing:
             "actions": {},
             "events": {},
             "links": [
-                {"rel": "properties", "href": f"{self.href_prefix}/properties",},
-                {"rel": "actions", "href": f"{self.href_prefix}/actions",},
-                {"rel": "events", "href": f"{self.href_prefix}/events",},
+                {"rel": "properties", "href": f"{self.href_prefix}/properties", },
+                {"rel": "actions", "href": f"{self.href_prefix}/actions", },
+                {"rel": "events", "href": f"{self.href_prefix}/events", },
             ],
         }
 
         for name, action in self.available_actions.items():
             thing["actions"][name] = action["metadata"]
             thing["actions"][name]["links"] = [
-                {"rel": "action", "href": f"{self.href_prefix}/actions/{name}",},
+                {"rel": "action", "href": f"{self.href_prefix}/actions/{name}", },
             ]
 
         for name, event in self.available_events.items():
             thing["events"][name] = event["metadata"]
             thing["events"][name]["links"] = [
-                {"rel": "event", "href": f"{self.href_prefix}/events/{name}",},
+                {"rel": "event", "href": f"{self.href_prefix}/events/{name}", },
             ]
 
         if self.ui_href is not None:
             thing["links"].append(
-                {"rel": "alternate", "mediaType": "text/html", "href": self.ui_href,}
+                {"rel": "alternate", "mediaType": "text/html", "href": self.ui_href, }
             )
 
         if self.description:
@@ -249,11 +250,10 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
-        print(value)
+        print(f"set property {property_name} to {value}")
         prop = await self.find_property(property_name)
         if not prop:
             return
-
         await prop.set_value(value)
 
     async def get_action(self, action_name, action_id):
@@ -385,8 +385,8 @@ class Thing:
         ws -- the websocket
         """
         if (
-            name in self.available_events
-            and id(ws) in self.available_events[name]["subscribers"]
+                name in self.available_events
+                and id(ws) in self.available_events[name]["subscribers"]
         ):
             self.available_events[name]["subscribers"].pop(id(ws))
 
@@ -397,13 +397,13 @@ class Thing:
         """
         message = {
             "messageType": "propertyStatus",
-            "data": {property_.name: await property_.get_value(),},
+            "data": {property_.name: await property_.get_value(), },
         }
 
         for subscriber in self.subscribers.values():
             try:
                 await subscriber.send_json(message, mode="binary")
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
 
     async def action_notify(self, action):
@@ -419,7 +419,7 @@ class Thing:
         for subscriber in self.subscribers.values():
             try:
                 await subscriber.send_json(message, mode="binary")
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
 
     async def event_notify(self, event):
@@ -438,5 +438,5 @@ class Thing:
         for subscriber in self.available_events[event.name]["subscribers"].values():
             try:
                 await subscriber.send_json(message, mode="binary")
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, ConnectionClosedOK):
                 pass

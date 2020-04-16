@@ -77,7 +77,7 @@ class Property:
         Get the current property value.
         Returns the value.
         """
-        return self.value.get()
+        return await self.value.get()
 
     async def set_value(self, value):
         """
@@ -85,7 +85,7 @@ class Property:
         value -- the value to set
         """
         await self.validate_value(value)
-        self.value.set(value)
+        await self.value.set(value)
 
     async def get_name(self):
         """

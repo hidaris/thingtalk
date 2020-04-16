@@ -1,6 +1,7 @@
 import asyncio
 import ujson as json
 
+from websockets import ConnectionClosedOK
 from starlette.requests import Request
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from starlette.responses import UJSONResponse
@@ -49,13 +50,13 @@ class ThingsHandler(BaseHandler):
             description = await thing.as_thing_description()
             description["href"] = await thing.get_href()
             description["links"].append(
-                {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}",}
+                {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}", }
             )
             description[
                 "base"
             ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
             description["securityDefinitions"] = {
-                "nosec_sc": {"scheme": "nosec",},
+                "nosec_sc": {"scheme": "nosec", },
             }
             description["security"] = "nosec_sc"
             descriptions.append(description)
@@ -83,7 +84,7 @@ class ThingHandler(BaseHandler):
 
         description = await self.thing.as_thing_description()
         description["links"].append(
-            {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}",}
+            {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}", }
         )
         description["base"] = "{}://{}{}".format(
             request.url.scheme,
@@ -91,7 +92,7 @@ class ThingHandler(BaseHandler):
             await self.thing.get_href(),
         )
         description["securityDefinitions"] = {
-            "nosec_sc": {"scheme": "nosec",},
+            "nosec_sc": {"scheme": "nosec", },
         }
         description["security"] = "nosec_sc"
 
@@ -123,53 +124,48 @@ class WsThingHandler(WebSocketEndpoint):
 
         thing_id = websocket.path_params.get("thing_id", "0")
         self.thing = await self.get_thing(thing_id)
+
         if self.thing is None:
-            raise HTTPException(status_code=404)
+            try:
+                await websocket.send_json(
+                    {
+                        "messageType": "error",
+                        "data": {
+                            "status": "404 Not Found",
+                            "message": "Invalid thing_id",
+                        },
+                    },
+                    mode="binary",
+                )
+            except (WebSocketDisconnect, ConnectionClosedOK):
+                pass
+        else:
+            await self.thing.add_subscriber(websocket)
+            ws_href = "{}://{}".format(
+                websocket.url.scheme, websocket.headers.get("Host", "")
+            )
 
-        await self.thing.add_subscriber(websocket)
-        ws_href = "{}://{}".format(
-            websocket.url.scheme, websocket.headers.get("Host", "")
-        )
+            description = await self.thing.as_thing_description()
+            description["links"].append(
+                {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}", }
+            )
+            description["base"] = "{}://{}{}".format(
+                websocket.url.scheme,
+                websocket.headers.get("Host", ""),
+                await self.thing.get_href(),
+            )
+            description["securityDefinitions"] = {
+                "nosec_sc": {"scheme": "nosec", },
+            }
+            description["security"] = "nosec_sc"
 
-        description = await self.thing.as_thing_description()
-        description["links"].append(
-            {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}",}
-        )
-        description["base"] = "{}://{}{}".format(
-            websocket.url.scheme,
-            websocket.headers.get("Host", ""),
-            await self.thing.get_href(),
-        )
-        description["securityDefinitions"] = {
-            "nosec_sc": {"scheme": "nosec",},
-        }
-        description["security"] = "nosec_sc"
-
-        await websocket.send_json(description, mode="binary")
+            await websocket.send_json(description, mode="binary")
 
     async def on_receive(self, websocket, message):
         """
         Handle an incoming message.
         message -- message to handle
         """
-        # try:
-        #     message = data
-        # except ValueError:
-        #     try:
-        #         await websocket.send_json(
-        #             {
-        #                 "messageType": "error",
-        #                 "data": {
-        #                     "status": "400 Bad Request",
-        #                     "message": "Parsing request failed",
-        #                 },
-        #             },
-        #             mode="binary",
-        #         )
-        #     except WebSocketDisconnect:
-        #         pass
-
-        #     return
 
         if "messageType" not in message or "data" not in message:
             try:
@@ -183,7 +179,24 @@ class WsThingHandler(WebSocketEndpoint):
                     },
                     mode="binary",
                 )
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, ConnectionClosedOK):
+                pass
+
+            return
+
+        if self.thing is None:
+            try:
+                await websocket.send_json(
+                    {
+                        "messageType": "error",
+                        "data": {
+                            "status": "404 Not Found",
+                            "message": "Invalid thing_id",
+                        },
+                    },
+                    mode="binary",
+                )
+            except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
 
             return
@@ -197,7 +210,7 @@ class WsThingHandler(WebSocketEndpoint):
                     await websocket.send_json(
                         {
                             "messageType": "error",
-                            "data": {"status": "400 Bad Request", "message": str(e),},
+                            "data": {"status": "400 Bad Request", "message": str(e), },
                         },
                         mode="binary",
                     )
@@ -238,12 +251,13 @@ class WsThingHandler(WebSocketEndpoint):
                     },
                     mode="binary",
                 )
-            except WebSocketDisconnect:
+            except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
 
     async def on_disconnect(self, websocket, close_code):
         """Handle a close event on the socket."""
-        await self.thing.remove_subscriber(websocket)
+        if self.thing:
+            await self.thing.remove_subscriber(websocket)
 
 
 class PropertiesHandler(BaseHandler):
@@ -280,7 +294,7 @@ class PropertyHandler(BaseHandler):
 
         if await thing.has_property(property_name):
             return UJSONResponse(
-                {property_name: await thing.get_property(property_name),}
+                {property_name: await thing.get_property(property_name), }
             )
         else:
             raise HTTPException(status_code=404)
@@ -313,7 +327,7 @@ class PropertyHandler(BaseHandler):
                 raise HTTPException(status_code=400)
 
             return UJSONResponse(
-                {property_name: await thing.get_property(property_name),}
+                {property_name: await thing.get_property(property_name), }
             )
         else:
             raise HTTPException(status_code=404)
@@ -347,7 +361,7 @@ class ActionsHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            message = json.loads(await request.json())
+            message = await request.json()
         except ValueError:
             raise HTTPException(status_code=404)
 
@@ -401,7 +415,8 @@ class ActionHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            message = json.loads(await request.json())
+            print(type(await request.json()))
+            message = await request.json()
         except ValueError:
             raise HTTPException(status_code=404)
 
