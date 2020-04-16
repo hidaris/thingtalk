@@ -46,7 +46,7 @@ class MultipleThings:
         # if idx < 0 or idx >= len(self.things):
         #     return None
 
-        return self.things[idx]
+        return self.things.get(idx, None)
 
     async def get_things(self):
         """Get the list of things."""
