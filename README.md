@@ -1,9 +1,13 @@
 # aiowebthing
 
-Async implementation of an HTTP Web Thing. This library is compatible with 3.6+.
+[![pypi-v](https://img.shields.io/pypi/v/aiowebthing.svg)](https://pypi.python.org/pypi/aiowebthing)
+[![python](https://img.shields.io/pypi/pyversions/aiowebthing.svg)](https://github.com/hidaris/aiowebthing)
+
+## What is `aiowebthing` ?
+`aiowebthing` is a library for the Web of Things protocol in Python Asyncio.
 
 ## Installation
-webthing can be installed via pip, as such:
+aiowebthing can be installed via pip, as such:
 
 `$ pip install aiowebthing`
 
@@ -145,6 +149,5 @@ async def update_level(self):
     except CancelledError:
         pass
 ```
-
 
 This will update our Value object with the sensor readings via the self.level.notify_of_external_update(read_from_gpio()) call. The Value object now notifies the property and the thing that the value has changed, which in turn notifies all websocket listeners.
