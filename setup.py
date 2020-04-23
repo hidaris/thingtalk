@@ -24,7 +24,7 @@ requirements = [
 
 setup(
     name="aiowebthing",
-    version="0.1.5",
+    version="0.1.6",
     description="HTTP Web Thing async implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",
