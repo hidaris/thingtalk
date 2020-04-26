@@ -250,7 +250,7 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
-        print(f"set property {property_name} to {value}")
+        print(f"set {self.title}'s property {property_name} to {value}")
         prop = await self.find_property(property_name)
         if not prop:
             return
@@ -400,7 +400,7 @@ class Thing:
             "data": {property_.name: await property_.get_value(), },
         }
 
-        for subscriber in self.subscribers.values():
+        for subscriber in list(self.subscribers.values()):
             try:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):
@@ -416,7 +416,7 @@ class Thing:
             "data": await action.as_action_description(),
         }
 
-        for subscriber in self.subscribers.values():
+        for subscriber in list(self.subscribers.values()):
             try:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):
@@ -435,7 +435,7 @@ class Thing:
             "data": await event.as_event_description(),
         }
 
-        for subscriber in self.available_events[event.name]["subscribers"].values():
+        for subscriber in list(self.available_events[event.name]["subscribers"].values()):
             try:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):

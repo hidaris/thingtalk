@@ -159,7 +159,10 @@ class WsThingHandler(WebSocketEndpoint):
             }
             description["security"] = "nosec_sc"
 
-            await websocket.send_json(description, mode="binary")
+            try:
+                await websocket.send_json(description, mode="binary")
+            except (WebSocketDisconnect, ConnectionClosedOK):
+                pass
 
     async def on_receive(self, websocket, message):
         """
@@ -207,13 +210,18 @@ class WsThingHandler(WebSocketEndpoint):
                 try:
                     await self.thing.set_property(property_name, property_value)
                 except PropertyError as e:
-                    await websocket.send_json(
-                        {
-                            "messageType": "error",
-                            "data": {"status": "400 Bad Request", "message": str(e), },
-                        },
-                        mode="binary",
-                    )
+                    try:
+                        await websocket.send_json(
+                            {
+                                "messageType": "error",
+                                "data": {"status": "400 Bad Request", "message": str(e), },
+                            },
+                            mode="binary",
+                        )
+                    except (WebSocketDisconnect, ConnectionClosedOK):
+                        pass
+
+                    return
         elif msg_type == "requestAction":
             for action_name, action_params in message["data"].items():
                 input_ = None
@@ -224,17 +232,22 @@ class WsThingHandler(WebSocketEndpoint):
                 if action:
                     asyncio.create_task(perform_action(action))
                 else:
-                    await websocket.send_json(
-                        {
-                            "messageType": "error",
-                            "data": {
-                                "status": "400 Bad Request",
-                                "message": "Invalid action request",
-                                "request": message,
+                    try:
+                        await websocket.send_json(
+                            {
+                                "messageType": "error",
+                                "data": {
+                                    "status": "400 Bad Request",
+                                    "message": "Invalid action request",
+                                    "request": message,
+                                },
                             },
-                        },
-                        mode="binary",
-                    )
+                            mode="binary",
+                        )
+                    except (WebSocketDisconnect, ConnectionClosedOK):
+                        pass
+
+                    return
         elif msg_type == "addEventSubscription":
             for event_name in message["data"].keys():
                 await self.thing.add_event_subscriber(event_name, websocket)
