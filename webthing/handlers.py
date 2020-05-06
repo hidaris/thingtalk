@@ -18,6 +18,10 @@ async def perform_action(action):
 
 class BaseHandler(HTTPEndpoint):
     """Base handler that is initialized with a thing."""
+    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        super().__init__(scope, receive, send)
+        request = Request(self.scope, receive=self.receive)
+        self.things = request.app.state.things
 
     async def get_thing(self, thing_id):
         """
@@ -26,9 +30,7 @@ class BaseHandler(HTTPEndpoint):
         thing_id -- ID of the thing to get, in string form
         Returns the thing, or None if not found.
         """
-        request = Request(self.scope, receive=self.receive)
-        things = request.app.state.things
-        return await things.get_thing(thing_id)
+        return await self.things.get_thing(thing_id)
 
 
 class ThingsHandler(BaseHandler):
@@ -43,7 +45,6 @@ class ThingsHandler(BaseHandler):
             "wss" if request.url.scheme == "https" else "ws",
             request.headers.get("Host", ""),
         )
-        self.things = request.app.state.things
 
         descriptions = []
         for idx, thing in await self.things.get_things():
@@ -326,7 +327,7 @@ class PropertyHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            args = json.loads(await request.json())
+            args = await request.json()
         except ValueError:
             raise HTTPException(status_code=400)
 
@@ -428,7 +429,6 @@ class ActionHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
         try:
-            print(type(await request.json()))
             message = await request.json()
         except ValueError:
             raise HTTPException(status_code=404)

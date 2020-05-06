@@ -114,36 +114,50 @@ class WebThingServer(AsyncMixin):
                 await thing.set_href_prefix(f"/things{self.base_path}/{idx}")
 
             routes = [
-                Route("/", ThingsHandler),
-                Route("/{thing_id:str}", ThingHandler),
-                WebSocketRoute("/{thing_id:str}", WsThingHandler),
-                Route("/{thing_id:str}/properties", PropertiesHandler),
-                Route(
-                    "/{thing_id:str}/properties/{property_name:str}", PropertyHandler
-                ),
-                Route("/{thing_id:str}/actions", ActionsHandler),
-                Route("/{thing_id:str}/actions/{action_name:str}", ActionHandler),
-                Route(
-                    "/{thing_id:str}/actions/{action_name:str}/{action_id}",
-                    ActionHandler,
-                ),
-                Route("/{thing_id:str}/events", EventHandler),
-                Route("/{thing_id:str}/events/{event_name:str}", EventHandler),
+                Route(f"/",
+                      ThingsHandler),
+                Route(f"{self.base_path}/{thing_id:str}",
+                      ThingHandler),
+                WebSocketRoute("/{thing_id:str}",
+                               WsThingHandler),
+                Route("/{thing_id:str}/properties",
+                      PropertiesHandler),
+                Route("/{thing_id:str}/properties/{property_name:str}",
+                      PropertyHandler),
+                Route("/{thing_id:str}/actions",
+                      ActionsHandler),
+                Route("/{thing_id:str}/actions/{action_name:str}",
+                      ActionHandler),
+                Route("/{thing_id:str}/actions/{action_name:str}/{action_id}",
+                      ActionHandler,),
+                Route("/{thing_id:str}/events",
+                      EventHandler),
+                Route("/{thing_id:str}/events/{event_name:str}",
+                      EventHandler),
             ]
         else:
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
 
             routes = [
-                Route("/", ThingHandler),
-                WebSocketRoute("/", WsThingHandler),
-                Route("/properties", PropertiesHandler),
-                Route("/properties/{property_name:str}", PropertyHandler),
-                Route("/actions", ActionsHandler),
-                Route("/actions/{action_name:str}", ActionHandler),
-                Route("/actions/{action_name:str}/{action_id:str}", ActionIDHandler),
-                Route("/events", EventsHandler),
-                Route("/events/{event_name:str}", EventHandler),
+                Route("/",
+                      ThingHandler),
+                WebSocketRoute("/",
+                               WsThingHandler),
+                Route("/properties",
+                      PropertiesHandler),
+                Route("/properties/{property_name:str}",
+                      PropertyHandler),
+                Route("/actions",
+                      ActionsHandler),
+                Route("/actions/{action_name:str}",
+                      ActionHandler),
+                Route("/actions/{action_name:str}/{action_id:str}",
+                      ActionIDHandler),
+                Route("/events",
+                      EventsHandler),
+                Route("/events/{event_name:str}",
+                      EventHandler),
             ]
 
         if isinstance(self.additional_routes, list):
