@@ -1,9 +1,12 @@
 """A setuptools based setup module."""
 
 from setuptools import setup, find_packages
+from setuptools.extension import Extension
+
+from Cython.Build import cythonize
+from Cython.Distutils import build_ext
 from codecs import open
 from os import path
-
 
 here = path.abspath(path.dirname(__file__))
 
@@ -25,15 +28,27 @@ requirements = [
 
 setup(
     name="aiowebthing",
+    ext_modules=cythonize(
+        [
+            Extension("webthing.*", ["webthing/*.py"])
+        ],
+        build_dir="build",
+        compiler_directives=dict(
+            always_allow_keywords=True
+        )),
+    cmdclass=dict(
+        build_ext=build_ext
+    ),
+    packages=[],
     version="0.1.15",
-    description="High performance implementation of Web of Things",
+    description="High performance implementation of Web of Things",    
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hidaris/aiowebthing",
     author="hidaris",
     author_email="zuocool@gmail.com",
     keywords="async mozilla iot web-of-things webthings",
-    packages=find_packages(exclude=["contrib", "docs", "tests"]),
+    # packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=requirements,
     classifiers=[
         "Development Status :: 4 - Beta",
