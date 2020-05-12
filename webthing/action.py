@@ -1,15 +1,17 @@
 """High-level Action base class implementation."""
 
+import uuid
+
 from .utils import timestamp
 
 
 class Action:
     """An Action represents an individual action on a thing."""
 
-    def __init__(self, id_, thing, name, input_):
+    def __init__(self, thing, name, input_, id_=uuid.uuid4().hex):
         """
         Initialize the object.
-        id_ ID of this action
+        id_ ID of this action, default uuid
         thing -- the Thing this action belongs to
         name -- name of the action
         input_ -- any action inputs

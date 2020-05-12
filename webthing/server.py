@@ -4,7 +4,7 @@ import socket
 
 from zeroconf import ServiceInfo, Zeroconf
 
-from starlette.routing import Route, WebSocketRoute
+from starlette.routing import Route, WebSocketRoute, Mount
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -22,7 +22,7 @@ from .handlers import (
     ActionIDHandler,
     EventsHandler,
 )
-from .containers import SingleThing, MultipleThings
+from .containers import MultipleThings
 from .utils import get_addresses, get_ip
 from .mixins import AsyncMixin
 
@@ -53,15 +53,15 @@ class WebThingServer(AsyncMixin):
     """Server to represent a Web Thing over HTTP."""
 
     def __init__(
-        self,
-        loop,
-        things_maker,
-        port=8000,
-        hostname=None,
-        additional_routes=None,
-        base_path="",
-        additional_on_startup=None,
-        additional_on_shutdown=None,
+            self,
+            loop,
+            things_maker,
+            port=8000,
+            hostname=None,
+            additional_routes=None,
+            base_path="",
+            additional_on_startup=None,
+            additional_on_shutdown=None,
     ):
         """
         Initialize the WebThingServer.
@@ -82,7 +82,7 @@ class WebThingServer(AsyncMixin):
         self.port = port
         self.hostname = hostname
         self.additional_routes = additional_routes
-        self.base_path = base_path.rstrip("/")
+        self.base_path = base_path.rstrip("/") if base_path else "/things"
         self.additional_on_startup = additional_on_startup
         self.additional_on_shutdown = additional_on_shutdown
         system_hostname = socket.gethostname().lower()
@@ -95,13 +95,13 @@ class WebThingServer(AsyncMixin):
 
         for address in get_addresses():
             self.hosts.extend(
-                [address, f"{address}:{self.port}",]
+                [address, f"{address}:{self.port}", ]
             )
 
         if self.hostname is not None:
             self.hostname = self.hostname.lower()
             self.hosts.extend(
-                [self.hostname, f"{self.hostname}:{self.port}",]
+                [self.hostname, f"{self.hostname}:{self.port}", ]
             )
 
     def create(self):
@@ -109,14 +109,15 @@ class WebThingServer(AsyncMixin):
 
     async def _create(self):
         if isinstance(self.things, MultipleThings):
-            # for idx, thing in enumerate(await self.things.get_things()):
             for idx, thing in await self.things.get_things():
-                await thing.set_href_prefix(f"/things{self.base_path}/{idx}")
+                await thing.set_href_prefix(f"{self.base_path}/{idx}")
 
-            routes = [
-                Route(f"/",
+            base_route = [
+                Route(f"{self.base_path}",
                       ThingsHandler),
-                Route(f"{self.base_path}/{thing_id:str}",
+            ]
+            routes = [
+                Route("/{thing_id:str}",
                       ThingHandler),
                 WebSocketRoute("/{thing_id:str}",
                                WsThingHandler),
@@ -129,7 +130,7 @@ class WebThingServer(AsyncMixin):
                 Route("/{thing_id:str}/actions/{action_name:str}",
                       ActionHandler),
                 Route("/{thing_id:str}/actions/{action_name:str}/{action_id}",
-                      ActionHandler,),
+                      ActionHandler),
                 Route("/{thing_id:str}/events",
                       EventHandler),
                 Route("/{thing_id:str}/events/{event_name:str}",
@@ -139,11 +140,13 @@ class WebThingServer(AsyncMixin):
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
 
-            routes = [
-                Route("/",
+            base_route = [
+                Route(f"{self.base_path}",
                       ThingHandler),
-                WebSocketRoute("/",
+                WebSocketRoute(f"{self.base_path}",
                                WsThingHandler),
+            ]
+            routes = [
                 Route("/properties",
                       PropertiesHandler),
                 Route("/properties/{property_name:str}",
@@ -164,8 +167,10 @@ class WebThingServer(AsyncMixin):
             routes = self.additional_routes + routes
 
         if self.base_path:
-            for h in routes:
-                h[0] = self.base_path + h[0]
+            routes = base_route + [
+                # Route('/', homepage),
+                Mount(f"{self.base_path}", routes=routes),
+            ]
 
         on_startups = [self.start]
         if self.additional_on_startup:
@@ -193,7 +198,7 @@ class WebThingServer(AsyncMixin):
             f"{name}._webthing._tcp.local.",
             address=socket.inet_aton(get_ip()),
             port=self.port,
-            properties={"path": "/",},
+            properties={"path": "/", },
             server=f"{socket.gethostname()}.local.",
         )
         self.zeroconf = Zeroconf()

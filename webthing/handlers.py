@@ -1,7 +1,7 @@
 import asyncio
-import ujson as json
 
 from websockets import ConnectionClosedOK
+from starlette.types import Scope, Receive, Send
 from starlette.requests import Request
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from starlette.responses import UJSONResponse
@@ -18,6 +18,7 @@ async def perform_action(action):
 
 class BaseHandler(HTTPEndpoint):
     """Base handler that is initialized with a thing."""
+
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         super().__init__(scope, receive, send)
         request = Request(self.scope, receive=self.receive)
@@ -41,10 +42,7 @@ class ThingsHandler(BaseHandler):
         Handle a GET request.
         property_name -- the name of the property from the URL path
         """
-        ws_href = "{}://{}".format(
-            "wss" if request.url.scheme == "https" else "ws",
-            request.headers.get("Host", ""),
-        )
+        ws_href = f"{'wss' if request.url.scheme == 'https' else 'ws'}://{request.headers.get('Host', '')}"
 
         descriptions = []
         for idx, thing in await self.things.get_things():
@@ -74,24 +72,17 @@ class ThingHandler(BaseHandler):
         thing_id -- ID of the thing this request is for
         """
         thing_id = request.path_params.get("thing_id", "0")
-        self.thing = await self.get_thing(thing_id)
-        if self.thing is None:
+        thing = await self.get_thing(thing_id)
+        if thing is None:
             raise HTTPException(status_code=404)
 
-        ws_href = "{}://{}".format(
-            "wss" if request.url.scheme == "https" else "ws",
-            request.headers.get("Host", ""),
-        )
+        ws_href = f"{'wss' if request.url.scheme == 'https' else 'ws'}://{request.headers.get('Host', '')}"
 
-        description = await self.thing.as_thing_description()
+        description = await thing.as_thing_description()
         description["links"].append(
-            {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}", }
+            {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}", }
         )
-        description["base"] = "{}://{}{}".format(
-            request.url.scheme,
-            request.headers.get("Host", ""),
-            await self.thing.get_href(),
-        )
+        description["base"] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
         description["securityDefinitions"] = {
             "nosec_sc": {"scheme": "nosec", },
         }
@@ -142,19 +133,14 @@ class WsThingHandler(WebSocketEndpoint):
                 pass
         else:
             await self.thing.add_subscriber(websocket)
-            ws_href = "{}://{}".format(
-                websocket.url.scheme, websocket.headers.get("Host", "")
-            )
+            ws_href = f"{websocket.url.scheme}://{websocket.headers.get('Host', '')}"
 
             description = await self.thing.as_thing_description()
             description["links"].append(
                 {"rel": "alternate", "href": f"{ws_href}{await self.thing.get_href()}", }
             )
-            description["base"] = "{}://{}{}".format(
-                websocket.url.scheme,
-                websocket.headers.get("Host", ""),
-                await self.thing.get_href(),
-            )
+            description[
+                "base"] = f"{websocket.url.scheme}://{websocket.headers.get('Host', '')}{await self.thing.get_href()}"
             description["securityDefinitions"] = {
                 "nosec_sc": {"scheme": "nosec", },
             }

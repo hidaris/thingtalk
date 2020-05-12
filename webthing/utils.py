@@ -55,7 +55,7 @@ def get_addresses():
                 ip = addr.ip[0].split("%")[0].lower()
 
                 if not ip.startswith("fe80:"):
-                    addresses.add("[{}]".format(ip))
+                    addresses.add(f"[{ip}]")
 
     return sorted(list(addresses))
 

@@ -27,10 +27,9 @@ import aiofiles
 
 class ReadAction(Action):
     def __init__(self, thing, input_):
-        Action.__init__(self, uuid.uuid4().hex, thing, "read", input_=input_)
+        Action.__init__(self, thing, "read", input_=input_)
 
     async def perform_action(self):
-        # time.sleep(self.input["duration"] / 1000)
         async with aiofiles.open(self.input["filename"], "r") as f:
             content = await f.read()
         import os
@@ -47,7 +46,7 @@ class FileThing(Thing):
             self,
             "urn:dev:ops:my-lamp-1234",
             "File thing",
-            ["OnOffSwitch", "Light"],
+            ["OnOffSwitch", ],
             "A web connected file system",
         )
 
