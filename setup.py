@@ -24,14 +24,14 @@ requirements = [
 
 setup(
     name="aiowebthing",
-    version="0.1.6",
-    description="HTTP Web Thing async implementation",
+    version="0.1.7",
+    description="Web of Thing async implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/hidaris/aiowebthing",
     author="hidaris",
     author_email="zuocool@gmail.com",
-    keywords="async mozilla iot web thing webthing",
+    keywords="async mozilla iot web-of-thing webthing",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=requirements,
     classifiers=[
