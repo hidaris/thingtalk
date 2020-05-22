@@ -48,7 +48,6 @@ The on property reports and sets the on/off state of the light. For this, we nee
 ``` python
 await light.add_property(
     Property(
-        light,
         'on',
         Value(True, lambda v: print('On-State is now', v)),
         metadata={
@@ -64,7 +63,6 @@ The brightness property reports the brightness level of the light and sets the l
 ``` python
 await light.add_property(
     Property(
-        light,
         'brightness',
         Value(50, lambda v: print('Brightness is now', v)),
         metadata={
@@ -117,7 +115,6 @@ level = Value(0.0);
 
 await sensor.add_property(
     Property(
-        sensor,
         'level',
         level,
         metadata={

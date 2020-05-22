@@ -7,7 +7,7 @@ class Event:
 
     name = None
 
-    def __init__(self, thing, name=None, data=None):
+    def __init__(self, thing, data=None):
         """
         Initialize the object.
         thing -- Thing this event belongs to
@@ -15,7 +15,6 @@ class Event:
         data -- data associated with the event
         """
         self.thing = thing
-        self.name = name if name else self.__class__.name
         self.data = data
         self.time = timestamp()
 
