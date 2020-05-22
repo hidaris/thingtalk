@@ -10,7 +10,9 @@ from .errors import PropertyError
 class Property:
     """A Property represents an individual state value of a thing."""
 
-    def __init__(self, thing, name, value, metadata=None):
+    __slots__ = ['thing', 'name', 'value', 'metadata', 'href_prefix', 'href']
+
+    def __init__(self, name, value, thing=None, metadata=None):
         """
         Initialize the object.
         thing -- the Thing this property belongs to
@@ -22,9 +24,9 @@ class Property:
         self.thing = thing
         self.name = name
         self.value = value
+        self.metadata = metadata if metadata is not None else {}
         self.href_prefix = ""
         self.href = f"/properties/{self.name}"
-        self.metadata = metadata if metadata is not None else {}
 
         # Add the property change observer to notify the Thing about a property
         # change.
@@ -54,7 +56,7 @@ class Property:
             description["links"] = []
 
         description["links"].append(
-            {"rel": "property", "href": self.href_prefix + self.href,}
+            {"rel": "property", "href": self.href_prefix + self.href, }
         )
         return description
 
@@ -93,6 +95,10 @@ class Property:
         Returns the name.
         """
         return self.name
+
+    async def set_thing(self, thing):
+        """Set the thing associated with this property."""
+        self.thing = thing
 
     async def get_thing(self):
         """Get the thing associated with this property."""

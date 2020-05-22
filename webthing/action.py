@@ -8,7 +8,9 @@ from .utils import timestamp
 class Action:
     """An Action represents an individual action on a thing."""
 
-    def __init__(self, thing, name, input_, id_=uuid.uuid4().hex):
+    name = ""
+
+    def __init__(self, thing, input_, id_=uuid.uuid4().hex):
         """
         Initialize the object.
         id_ ID of this action, default uuid
@@ -18,7 +20,6 @@ class Action:
         """
         self.id = id_
         self.thing = thing
-        self.name = name
         self.input = input_
         self.href_prefix = ""
         self.href = f"/actions/{self.name}/{self.id}"

@@ -9,3 +9,4 @@ from .containers import SingleThing, MultipleThings
 from .thing import Thing
 from .value import Value
 from .utils import background_thread_loop
+from .middlewares import JWTAuthenticationBackend, JWTWebSocketAuthenticationBackend

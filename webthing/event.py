@@ -5,7 +5,9 @@ from .utils import timestamp
 class Event:
     """An Event represents an individual event from a thing."""
 
-    def __init__(self, thing, name, data=None):
+    name = None
+
+    def __init__(self, thing, name=None, data=None):
         """
         Initialize the object.
         thing -- Thing this event belongs to
@@ -13,7 +15,7 @@ class Event:
         data -- data associated with the event
         """
         self.thing = thing
-        self.name = name
+        self.name = name if name else self.__class__.name
         self.data = data
         self.time = timestamp()
 

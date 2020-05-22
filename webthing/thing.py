@@ -10,7 +10,10 @@ from starlette.websockets import WebSocketDisconnect
 class Thing:
     """A Web Thing."""
 
-    def __init__(self, id_, title, type_=[], description=""):
+    type = []
+    description = ""
+
+    def __init__(self, id_, title, type_=[]):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -18,14 +21,16 @@ class Thing:
         type_ -- the thing's type(s)
         description -- description of the thing
         """
-        if not isinstance(type_, list):
-            type_ = [type_]
+        if type_:
+            if not isinstance(type_, list):
+                type_ = [type_]
+        else:
+            type_ = self.__class__.type
 
         self.id = id_
         self.context = "https://iot.mozilla.org/schemas"
         self.type = type_
         self.title = title
-        self.description = description
         self.properties = {}
         self.available_actions = {}
         self.available_events = {}
@@ -195,6 +200,7 @@ class Thing:
         property_ -- property to add
         """
         await property_.set_href_prefix(self.href_prefix)
+        await property_.set_thing(self)
         self.properties[property_.name] = property_
 
     async def remove_property(self, property_):
@@ -333,16 +339,17 @@ class Thing:
         self.actions[action_name].remove(action)
         return True
 
-    async def add_available_action(self, name, metadata, cls):
+    async def add_available_action(self, metadata, cls):
         """
         Add an available action.
-        name -- name of the action
+        name -- name of the action, default use cls.name
         metadata -- action metadata, i.e. type, description, etc., as a dict
         cls -- class to instantiate for this action
         """
         if metadata is None:
             metadata = {}
 
+        name = cls.name
         self.available_actions[name] = {
             "metadata": metadata,
             "class": cls,

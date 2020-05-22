@@ -1,6 +1,7 @@
 import asyncio
 
 from websockets import ConnectionClosedOK
+from starlette import status
 from starlette.types import Scope, Receive, Send
 from starlette.requests import Request
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -8,6 +9,7 @@ from starlette.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 
+from .middlewares import requires, has_required_scope
 from .errors import PropertyError
 
 
@@ -37,6 +39,7 @@ class BaseHandler(HTTPEndpoint):
 class ThingsHandler(BaseHandler):
     """Handle a request to / when the server manages multiple things."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -66,6 +69,7 @@ class ThingsHandler(BaseHandler):
 class ThingHandler(BaseHandler):
     """Handle a request to /."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request, including websocket requests.
@@ -107,6 +111,32 @@ class WsThingHandler(WebSocketEndpoint):
         things = websocket.app.state.things
         return await things.get_thing(thing_id)
 
+    async def dispatch(self) -> None:
+        websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
+        try:
+            await self.on_connect(websocket)
+        except WebSocketDisconnect:
+            return
+
+        close_code = status.WS_1000_NORMAL_CLOSURE
+
+        try:
+            while True:
+                message = await websocket.receive()
+                if message["type"] == "websocket.receive":
+                    data = await self.decode(websocket, message)
+                    await self.on_receive(websocket, data)
+                elif message["type"] == "websocket.disconnect":
+                    close_code = int(message.get("code", status.WS_1000_NORMAL_CLOSURE))
+                    break
+        except Exception as exc:
+            close_code = status.WS_1011_INTERNAL_ERROR
+            raise exc from None
+        finally:
+            await self.on_disconnect(websocket, close_code)
+
+
+    @requires('authenticated')
     async def on_connect(self, websocket):
         """
         Handle a GET request, including websocket requests.
@@ -256,13 +286,16 @@ class WsThingHandler(WebSocketEndpoint):
 
     async def on_disconnect(self, websocket, close_code):
         """Handle a close event on the socket."""
-        if self.thing:
+        print(close_code)
+
+        if hasattr(self, "thing") and self.thing:
             await self.thing.remove_subscriber(websocket)
 
 
 class PropertiesHandler(BaseHandler):
     """Handle a request to /properties."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -279,6 +312,7 @@ class PropertiesHandler(BaseHandler):
 class PropertyHandler(BaseHandler):
     """Handle a request to /properties/<property>."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -299,6 +333,7 @@ class PropertyHandler(BaseHandler):
         else:
             raise HTTPException(status_code=404)
 
+    @requires('authenticated')
     async def put(self, request):
         """
         Handle a PUT request.
@@ -336,6 +371,7 @@ class PropertyHandler(BaseHandler):
 class ActionsHandler(BaseHandler):
     """Handle a request to /actions."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -349,6 +385,7 @@ class ActionsHandler(BaseHandler):
 
         return UJSONResponse(await thing.get_action_descriptions())
 
+    @requires('authenticated')
     async def post(self, request):
         """
         Handle a POST request.
@@ -384,6 +421,7 @@ class ActionsHandler(BaseHandler):
 class ActionHandler(BaseHandler):
     """Handle a request to /actions/<action_name>."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -401,6 +439,7 @@ class ActionHandler(BaseHandler):
             await thing.get_action_descriptions(action_name=action_name)
         )
 
+    @requires('authenticated')
     async def post(self, request):
         """
         Handle a POST request.
@@ -441,6 +480,7 @@ class ActionHandler(BaseHandler):
 class ActionIDHandler(BaseHandler):
     """Handle a request to /actions/<action_name>/<action_id>."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -462,6 +502,7 @@ class ActionIDHandler(BaseHandler):
 
         return UJSONResponse(await action.as_action_description())
 
+    @requires('authenticated')
     async def put(self, request):
         """
         Handle a PUT request.
@@ -480,6 +521,7 @@ class ActionIDHandler(BaseHandler):
 
         return UJSONResponse({"msg": "success"}, status_code=200)
 
+    @requires('authenticated')
     async def delete(self, request):
         """
         Handle a DELETE request.
@@ -504,6 +546,7 @@ class ActionIDHandler(BaseHandler):
 class EventsHandler(BaseHandler):
     """Handle a request to /events."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
@@ -521,6 +564,7 @@ class EventsHandler(BaseHandler):
 class EventHandler(BaseHandler):
     """Handle a request to /events/<event_name>."""
 
+    @requires('authenticated')
     async def get(self, request):
         """
         Handle a GET request.
