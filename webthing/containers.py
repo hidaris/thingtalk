@@ -55,3 +55,6 @@ class MultipleThings:
     async def get_name(self):
         """Get the mDNS server name."""
         return self.name
+
+    async def add_thing(self, thing):
+        self.things.update({thing.id: thing})

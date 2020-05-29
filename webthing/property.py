@@ -31,6 +31,8 @@ class Property:
         # Add the property change observer to notify the Thing about a property
         # change.
         self.value.on("update", lambda _: self.thing.property_notify(self))
+        self.value.on("sync", lambda _: self.thing.property_notify(self))
+        self.value.on("update", lambda _: self.thing.property_action(self))
 
     async def validate_value(self, value):
         """
@@ -81,13 +83,13 @@ class Property:
         """
         return await self.value.get()
 
-    async def set_value(self, value):
+    async def set_value(self, value, with_action=True):
         """
         Set the current value of the property.
         value -- the value to set
         """
         await self.validate_value(value)
-        await self.value.set(value)
+        await self.value.set(value, with_action=with_action)
 
     async def get_name(self):
         """

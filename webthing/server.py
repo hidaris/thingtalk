@@ -23,7 +23,7 @@ from .handlers import (
     ActionIDHandler,
     EventsHandler,
 )
-from .containers import MultipleThings
+from .containers import MultipleThings, SingleThing
 from .utils import get_addresses, get_ip
 from .mixins import AsyncMixin
 
@@ -56,7 +56,7 @@ class WebThingServer(AsyncMixin):
     def __init__(
             self,
             loop,
-            things_maker,
+            thing_cls=None,
             port=8000,
             hostname=None,
             base_path="",
@@ -70,9 +70,9 @@ class WebThingServer(AsyncMixin):
         For documentation on the additional route format, see:
         https://www.starlette.io/applications/
         loop -- event loop
-        things_maker -- make things managed by this server -- should be of type
-                  SingleThing or MultipleThings
-        port -- port to listen on (defaults to 80)
+        thing_cls -- make things managed by this server -- should be of type
+                  Thing or List of Things
+        port -- port to listen on (defaults to 8000)
         hostname -- Optional host name, i.e. mything.com
         base_path -- base URL path to use, rather than '/'
         additional_routes -- list of additional routes to add to the server
@@ -81,15 +81,17 @@ class WebThingServer(AsyncMixin):
         additional_on_shutdown -- list of additional shutdown event handlers
         """
         self._loop = loop
-        self.things = self._run_async(things_maker())
+        self.things = None  # [] if thing_cls is None else list(thing_cls)
+        self.thing_cls = thing_cls
         self.port = port
         self.hostname = hostname
         self.base_path = base_path.rstrip("/") if base_path else "/things"
         self.additional_routes = additional_routes
         self.additional_middlewares = additional_middlewares
-        self.additional_on_startup = additional_on_startup
-        self.additional_on_shutdown = additional_on_shutdown
+        self.additional_on_startup = [] if additional_on_startup is None else list(additional_on_startup)
+        self.additional_on_shutdown = [] if additional_on_shutdown is None else list(additional_on_shutdown)
         system_hostname = socket.gethostname().lower()
+
         self.hosts = [
             "localhost",
             f"localhost:{self.port}",
@@ -111,7 +113,16 @@ class WebThingServer(AsyncMixin):
     def create(self):
         return self._run_async(self._create())
 
-    async def _create(self):
+    async def config_things(self):
+        if isinstance(self.thing_cls, list):
+            self.things = MultipleThings({}, "things")
+            for cls in self.thing_cls:
+                thing = await cls().build()
+                await self.things.add_thing(thing)
+        else:
+            self.things = SingleThing(await self.thing_cls().build())
+
+    async def config_routes(self):
         if isinstance(self.things, MultipleThings):
             for idx, thing in await self.things.get_things():
                 await thing.set_href_prefix(f"{self.base_path}/{idx}")
@@ -176,29 +187,46 @@ class WebThingServer(AsyncMixin):
                 Mount(f"{self.base_path}", routes=routes),
             ]
 
-        middleware_lst = [] # middlewares
+        return routes
+
+    async def config_middlewares(self):
+        middlewares = []
         if self.additional_middlewares:
             assert isinstance(self.additional_middlewares, list)
-            middleware_lst.extend(self.additional_middlewares)
+            middlewares.extend(self.additional_middlewares)
 
+        return middlewares
+
+    async def config_on_startups(self):
         on_startups = [self.start]
         if self.additional_on_startup:
-            assert isinstance(self.additional_on_startup, list)
             on_startups.extend(self.additional_on_startup)
 
+        return on_startups
+
+    async def config_on_shutdowns(self):
         on_shutdowns = [self.stop]
         if self.additional_on_shutdown:
             assert isinstance(self.additional_on_shutdown, list)
             on_shutdowns.extend(self.additional_on_shutdown)
 
+        return on_shutdowns
+
+    async def _create(self):
+        await self.config_things()
+        routes = await self.config_routes()
+        middlewares = await self.config_middlewares()
+        on_startups = await self.config_on_startups()
+        on_shutdowns = await self.config_on_shutdowns()
+
         app = Starlette(
-            debug=True, routes=routes, middleware=middleware_lst, on_startup=on_startups, on_shutdown=on_shutdowns,
+            debug=True, routes=routes, middleware=middlewares, on_startup=on_startups, on_shutdown=on_shutdowns,
         )
 
         app.state.things = self.things
 
         require_auth = False
-        for middleware in middleware_lst:
+        for middleware in middlewares:
             if middleware.cls == AuthenticationMiddleware:
                 require_auth = True
 

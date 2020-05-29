@@ -13,7 +13,7 @@ class Thing:
     type = []
     description = ""
 
-    def __init__(self, id_, title, type_=[]):
+    def __init__(self, id_, title):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -21,15 +21,11 @@ class Thing:
         type_ -- the thing's type(s)
         description -- description of the thing
         """
-        if type_:
-            if not isinstance(type_, list):
-                type_ = [type_]
-        else:
-            type_ = self.__class__.type
+        if not isinstance(self.type, list):
+            self.type = [self.type]
 
         self.id = id_
         self.context = "https://iot.mozilla.org/schemas"
-        self.type = type_
         self.title = title
         self.properties = {}
         self.available_actions = {}
@@ -256,11 +252,23 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
-        print(f"set {self.title}'s property {property_name} to {value}")
         prop = await self.find_property(property_name)
         if not prop:
             return
+        print(f"set {self.title}'s property {property_name} to {value}")
         await prop.set_value(value)
+
+    async def sync_property(self, property_name, value):
+        """
+        Sync a property value from cloud or mqtt etc.
+        property_name -- name of the property to set
+        value -- value to set
+        """
+        prop = await self.find_property(property_name)
+        if not prop:
+            return
+        print(f"sync {self.title}'s property {property_name} to {value}")
+        await prop.set_value(value, with_action=False)
 
     async def get_action(self, action_name, action_id):
         """
@@ -412,6 +420,13 @@ class Thing:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
+
+    async def property_action(self, property_):
+        """
+        Addional action when a property change.
+        property_ -- the property that changed
+        """
+        pass
 
     async def action_notify(self, action):
         """

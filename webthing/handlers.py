@@ -9,7 +9,7 @@ from starlette.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 
-from .middlewares import requires, has_required_scope
+from .middlewares import requires
 from .errors import PropertyError
 
 
@@ -57,10 +57,16 @@ class ThingsHandler(BaseHandler):
             description[
                 "base"
             ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
-            description["securityDefinitions"] = {
-                "nosec_sc": {"scheme": "nosec", },
-            }
-            description["security"] = "nosec_sc"
+            if request.app.state.require_auth:
+                description["securityDefinitions"] = {
+                    "bearer_sc": {"scheme": "bearer", },
+                }
+                description["security"] = "bearer_sc"
+            else:
+                description["securityDefinitions"] = {
+                    "nosec_sc": {"scheme": "nosec", },
+                }
+                description["security"] = "nosec_sc"
             descriptions.append(description)
 
         return UJSONResponse(descriptions)
@@ -87,10 +93,16 @@ class ThingHandler(BaseHandler):
             {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}", }
         )
         description["base"] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
-        description["securityDefinitions"] = {
-            "nosec_sc": {"scheme": "nosec", },
-        }
-        description["security"] = "nosec_sc"
+        if request.app.state.require_auth:
+            description["securityDefinitions"] = {
+                "bearer_sc": {"scheme": "bearer", },
+            }
+            description["security"] = "bearer_sc"
+        else:
+            description["securityDefinitions"] = {
+                "nosec_sc": {"scheme": "nosec", },
+            }
+            description["security"] = "nosec_sc"
 
         return UJSONResponse(description)
 
@@ -135,7 +147,6 @@ class WsThingHandler(WebSocketEndpoint):
         finally:
             await self.on_disconnect(websocket, close_code)
 
-
     @requires('authenticated')
     async def on_connect(self, websocket):
         """
@@ -161,6 +172,7 @@ class WsThingHandler(WebSocketEndpoint):
                 )
             except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
+
         else:
             await self.thing.add_subscriber(websocket)
             ws_href = f"{websocket.url.scheme}://{websocket.headers.get('Host', '')}"
@@ -171,10 +183,16 @@ class WsThingHandler(WebSocketEndpoint):
             )
             description[
                 "base"] = f"{websocket.url.scheme}://{websocket.headers.get('Host', '')}{await self.thing.get_href()}"
-            description["securityDefinitions"] = {
-                "nosec_sc": {"scheme": "nosec", },
-            }
-            description["security"] = "nosec_sc"
+            if websocket.app.state.require_auth:
+                description["securityDefinitions"] = {
+                    "bearer_sc": {"scheme": "bearer", },
+                }
+                description["security"] = "bearer_sc"
+            else:
+                description["securityDefinitions"] = {
+                    "nosec_sc": {"scheme": "nosec", },
+                }
+                description["security"] = "nosec_sc"
 
             try:
                 await websocket.send_json(description, mode="binary")
@@ -202,8 +220,6 @@ class WsThingHandler(WebSocketEndpoint):
             except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
 
-            return
-
         if self.thing is None:
             try:
                 await websocket.send_json(
@@ -218,13 +234,13 @@ class WsThingHandler(WebSocketEndpoint):
                 )
             except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
-
             return
 
         msg_type = message["messageType"]
         if msg_type == "setProperty":
             for property_name, property_value in message["data"].items():
                 try:
+                    print(f"debug {property_name}: {property_value}")
                     await self.thing.set_property(property_name, property_value)
                 except PropertyError as e:
                     try:
@@ -238,7 +254,23 @@ class WsThingHandler(WebSocketEndpoint):
                     except (WebSocketDisconnect, ConnectionClosedOK):
                         pass
 
-                    return
+        elif msg_type == "syncProperty":
+            for property_name, property_value in message["data"].items():
+                try:
+                    print(f"debug {property_name}: {property_value}")
+                    await self.thing.sync_property(property_name, property_value)
+                except PropertyError as e:
+                    try:
+                        await websocket.send_json(
+                            {
+                                "messageType": "error",
+                                "data": {"status": "400 Bad Request", "message": str(e), },
+                            },
+                            mode="binary",
+                        )
+                    except (WebSocketDisconnect, ConnectionClosedOK):
+                        pass
+
         elif msg_type == "requestAction":
             for action_name, action_params in message["data"].items():
                 input_ = None
@@ -264,7 +296,6 @@ class WsThingHandler(WebSocketEndpoint):
                     except (WebSocketDisconnect, ConnectionClosedOK):
                         pass
 
-                    return
         elif msg_type == "addEventSubscription":
             for event_name in message["data"].keys():
                 await self.thing.add_event_subscriber(event_name, websocket)
@@ -286,7 +317,6 @@ class WsThingHandler(WebSocketEndpoint):
 
     async def on_disconnect(self, websocket, close_code):
         """Handle a close event on the socket."""
-        print(close_code)
 
         if hasattr(self, "thing") and self.thing:
             await self.thing.remove_subscriber(websocket)

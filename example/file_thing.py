@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-
 import uuid
 import time
-
-from starlette.concurrency import run_in_threadpool
 
 from webthing import (
     Thing,
@@ -20,14 +16,9 @@ from webthing import (
 import aiofiles
 
 
-# class OverheatedEvent(Event):
-#     def __init__(self, thing, data):
-#         Event.__init__(self, thing, "overheated", data=data)
-
-
 class ReadAction(Action):
-    def __init__(self, thing, input_):
-        Action.__init__(self, thing, "read", input_=input_)
+
+    name = "read"
 
     async def perform_action(self):
         async with aiofiles.open(self.input["filename"], "r") as f:
@@ -41,19 +32,19 @@ class ReadAction(Action):
 
 
 class FileThing(Thing):
+
+    type = ["OnOffSwitch", ]
+    description = "A web connected file system"
+
     def __init__(self):
-        Thing.__init__(
-            self,
+        super().__init__(
             "urn:dev:ops:my-lamp-1234",
-            "File thing",
-            ["OnOffSwitch", ],
-            "A web connected file system",
+            "File thing"
         )
 
     async def build(self):
         await self.add_property(
             Property(
-                self,
                 "size",
                 Value(0),
                 metadata={
@@ -67,7 +58,6 @@ class FileThing(Thing):
 
         await self.add_property(
             Property(
-                self,
                 "size2",
                 Value(0),
                 metadata={
@@ -81,7 +71,6 @@ class FileThing(Thing):
 
         await self.add_property(
             Property(
-                self,
                 "content",
                 Value(""),
                 metadata={
@@ -116,9 +105,8 @@ class FileThing(Thing):
             },
         )
 
-        # return MultipleThings([self], "File things")
-        return MultipleThings({self.id: self}, "File things")
+        return self
 
 
 with background_thread_loop() as loop:
-    app = WebThingServer(loop, FileThing().build).create()
+    app = WebThingServer(loop, things=[FileThing]).create()

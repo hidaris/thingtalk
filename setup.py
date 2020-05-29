@@ -17,14 +17,14 @@ requirements = [
     "jsonschema>=3.2.0",
     "zeroconf>=0.21.0",
     "ujson",
-    "httpx==0.12.*",
+    "httpx==0.13.*",
     "starlette==0.13.*",
     "uvicorn==0.11.*",
 ]
 
 setup(
     name="aiowebthing",
-    version="0.1.8",
+    version="0.1.9",
     description="Web of Thing async implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -24,25 +24,29 @@ class Value(EventEmitter):
         self.last_value = initial_value
         self.value_forwarder = value_forwarder
 
-    async def set(self, value):
+    async def set(self, value, with_action=True):
         """
         Set a new value for this thing.
         value -- value to set
+        with_action -- do property action
         """
         if self.value_forwarder is not None:
             self.value_forwarder(value)
 
-        await self.notify_of_external_update(value)
+        await self.notify_of_external_update(value, with_action=with_action)
 
     async def get(self):
         """Return the last known value from the underlying thing."""
         return self.last_value
 
-    async def notify_of_external_update(self, value):
+    async def notify_of_external_update(self, value, with_action=True):
         """
         Notify observers of a new value.
         value -- new value
         """
         if value is not None and value != self.last_value:
             self.last_value = value
-            self.emit('update', value)
+            if with_action:
+                self.emit('update', value)
+            else:
+                self.emit('sync', value)
