@@ -13,9 +13,9 @@ aiowebthing can be installed via pip, as such:
 
 ## Running the Sample
 `$ wget
-https://raw.githubusercontent.com/mozilla-iot/webthing-python/master/example/single-thing.py`
+https://raw.githubusercontent.com/hidaris/aiowebthing/master/example/test.py`
 
-`$ uvicorn single-thing:app --reload`
+`$ uvicorn test:app --reload`
 
 This starts a server and lets you search for it from your gateway through mDNS. To add it to your gateway, navigate to the Things page in the gateway's UI and click the + icon at the bottom right. If both are on the same network, the example thing will automatically appear.
 
@@ -46,8 +46,7 @@ Now we can add the required properties.
 The on property reports and sets the on/off state of the light. For this, we need to have a Value object which holds the actual state and also a method to turn the light on/off. For our purposes, we just want to log the new state if the light is switched on/off.
 
 ``` python
-await light.add_property(
-    Property(
+on = Property(
         'on',
         Value(True, lambda v: print('On-State is now', v)),
         metadata={
@@ -55,15 +54,15 @@ await light.add_property(
             'title': 'On/Off',
             'type': 'boolean',
             'description': 'Whether the lamp is turned on',
-        }))
+        })
+await light.add_property(on)
 ```
 
 The brightness property reports the brightness level of the light and sets the level. Like before, instead of actually setting the level of a light, we just log the level.
 
 ``` python
-await light.add_property(
-    Property(
-        'brightness',
+brightness = Property(
+         'brightness',
         Value(50, lambda v: print('Brightness is now', v)),
         metadata={
             '@type': 'BrightnessProperty',
@@ -73,7 +72,8 @@ await light.add_property(
             'minimum': 0,
             'maximum': 100,
             'unit': 'percent',
-        }))
+        })
+await light.add_property(brightness)
 ```
 
 Now we can add our newly created thing to the server and start it:
@@ -82,7 +82,7 @@ Now we can add our newly created thing to the server and start it:
 # If adding more than one thing, use MultipleThings() with a name.
 # In the single thing case, the thing's name will be broadcast.
 with background_thread_loop() as loop:
-    app = WebThingServer(loop, FileThing().build).create()
+    app = WebThingServer(loop, Light).create()
 ```
 
 This will start the server, making the light available via the WoT REST API and announcing it as a discoverable resource on your local network via mDNS.

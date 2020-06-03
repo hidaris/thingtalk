@@ -237,16 +237,17 @@ class WebThingServer(AsyncMixin):
     async def start(self):
         """Start listening for incoming connections."""
         name = await self.things.get_name()
-        service_info = ServiceInfo(
-            "_webthing._tcp.local.",
+        args = [
+            '_webthing._tcp.local.',
             f"{name}._webthing._tcp.local.",
-            address=socket.inet_aton(get_ip()),
-            port=self.port,
-            properties={"path": "/", },
-            server=f"{socket.gethostname()}.local.",
-        )
+        ]
+        kwargs = {'port': self.port, 'properties': {
+            'path': '/',
+        }, 'server': '{}.local.'.format(socket.gethostname()), 'addresses': [socket.inet_aton(get_ip())]}
+
+        self.service_info = ServiceInfo(*args, **kwargs)
         self.zeroconf = Zeroconf()
-        self.zeroconf.register_service(service_info)
+        self.zeroconf.register_service(self.service_info)
 
     async def stop(self):
         """Stop listening."""

@@ -83,7 +83,6 @@ class FileThing(Thing):
         )
 
         await self.add_available_action(
-            "read",
             {
                 "title": "Read",
                 "description": "读取文件内容",
@@ -109,4 +108,4 @@ class FileThing(Thing):
 
 
 with background_thread_loop() as loop:
-    app = WebThingServer(loop, things=[FileThing]).create()
+    app = WebThingServer(loop, FileThing).create()
