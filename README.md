@@ -14,11 +14,14 @@
 5. thing.sync_property -- Sync a property value from cloud or mqtt broker etc, property set value with no action disclaim.
 6. thing.property_action -- addional action sync the property change to device. 
 6. property.set_value(value, with_action=True) -- if with_action is True, Value instance should emit `update`, else `sync`
-7. # Add the property change observer to notify the Thing about a property
-   # change.
-   self.value.on("update", lambda _: self.thing.property_notify(self))
-   self.value.on("sync", lambda _: self.thing.property_notify(self))
-   self.value.on("update", lambda _: self.thing.property_action(self))
+7. Add the property change observer to notify the Thing about a property change or do some additional action:
+
+```python
+self.value.on("update", lambda _: self.thing.property_notify(self))
+self.value.on("sync", lambda _: self.thing.property_notify(self))
+self.value.on("update", lambda _: self.thing.property_action(self))
+```
+   
 
 
 ## Installation
