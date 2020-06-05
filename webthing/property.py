@@ -10,7 +10,7 @@ from .errors import PropertyError
 class Property:
     """A Property represents an individual state value of a thing."""
 
-    __slots__ = ['thing', 'name', 'value', 'metadata', 'href_prefix', 'href']
+    __slots__ = ['thing', 'name', 'value', 'metadata', 'href_prefix', 'href', 'media_type']
 
     def __init__(self, name, value, thing=None, metadata=None):
         """
@@ -27,6 +27,7 @@ class Property:
         self.metadata = metadata if metadata is not None else {}
         self.href_prefix = ""
         self.href = f"/properties/{self.name}"
+        self.media_type = "application/json"
 
         # Add the property change observer to notify the Thing about a property
         # change.
@@ -57,9 +58,14 @@ class Property:
         if "links" not in description:
             description["links"] = []
 
-        description["links"].append(
-            {"rel": "property", "href": self.href_prefix + self.href, }
-        )
+        if description["@type"] in ["VideoProperty"]:
+            description["links"].append(
+                {"rel": "property", "href": self.href, "mediaType": self.media_type}
+            )
+        else:
+            description["links"].append(
+                {"rel": "property", "href": self.href_prefix + self.href, "mediaType": self.media_type}
+            )
         return description
 
     async def set_href_prefix(self, prefix):
@@ -68,6 +74,20 @@ class Property:
         prefix -- the prefix
         """
         self.href_prefix = prefix
+
+    async def set_href(self, href):
+        """
+        Set the href associated with this property.
+        href -- the new prefix
+        """
+        self.href = href
+
+    async def set_media_type(self, media_type):
+        """
+        Set the media type associated with this property.
+        media_type -- the new media type
+        """
+        self.media_type = media_type
 
     async def get_href(self):
         """

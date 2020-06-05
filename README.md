@@ -4,7 +4,22 @@
 [![python](https://img.shields.io/pypi/pyversions/aiowebthing.svg)](https://github.com/hidaris/aiowebthing)
 
 ## What is `aiowebthing` ?
-`aiowebthing` is a library for the Web of Things protocol in Python Asyncio.
+`aiowebthing` is a library for the Web of Things protocol in Python Asyncio. This library is derived of webthing-python project (supporting Tornado) but adapted for Starlette (based on Uvicorn for better performance).
+
+### additional features
+1. additional_routes -- list of additional routes add to the server
+2. additional_middlewares -- list of additional middlewares add to the server
+3. additional_on_startup -- list of additional starup event handlers add to the server
+4. additional_on_shutdown -- list of additional shutdown event handlers add to the server
+5. thing.sync_property -- Sync a property value from cloud or mqtt broker etc, property set value with no action disclaim.
+6. thing.property_action -- addional action sync the property change to device. 
+6. property.set_value(value, with_action=True) -- if with_action is True, Value instance should emit `update`, else `sync`
+7. # Add the property change observer to notify the Thing about a property
+   # change.
+   self.value.on("update", lambda _: self.thing.property_notify(self))
+   self.value.on("sync", lambda _: self.thing.property_notify(self))
+   self.value.on("update", lambda _: self.thing.property_action(self))
+
 
 ## Installation
 aiowebthing can be installed via pip, as such:
@@ -34,28 +49,34 @@ Setting this property via a PUT call to the REST API sets the brightness level o
 First we create a new Thing:
 
 ``` python
-light = Thing(
-    'urn:dev:ops:my-lamp-1234',
-    'My Lamp',
-    ['OnOffSwitch', 'Light'],
-    'A web connected lamp'
-)
+from webthing import Thing, Property, Value
+
+
+class Light(Thing):
+    type = ['OnOffSwitch', 'Light'],
+    description = 'A web connected lamp'
+    
+    super().__init__(
+        'urn:dev:ops:my-lamp-1234',
+        'My Lamp',
+    )
 ```
 Now we can add the required properties.
 
 The on property reports and sets the on/off state of the light. For this, we need to have a Value object which holds the actual state and also a method to turn the light on/off. For our purposes, we just want to log the new state if the light is switched on/off.
 
 ``` python
-on = Property(
-        'on',
-        Value(True, lambda v: print('On-State is now', v)),
-        metadata={
-            '@type': 'OnOffProperty',
-            'title': 'On/Off',
-            'type': 'boolean',
-            'description': 'Whether the lamp is turned on',
+async def build(self):
+    on = Property(
+            'on',
+            Value(True, lambda v: print('On-State is now', v)),
+            metadata={
+                '@type': 'OnOffProperty',
+                'title': 'On/Off',
+                'type': 'boolean',
+                'description': 'Whether the lamp is turned on',
         })
-await light.add_property(on)
+    await self.add_property(on)
 ```
 
 The brightness property reports the brightness level of the light and sets the level. Like before, instead of actually setting the level of a light, we just log the level.
@@ -73,7 +94,7 @@ brightness = Property(
             'maximum': 100,
             'unit': 'percent',
         })
-await light.add_property(brightness)
+await self.add_property(brightness)
 ```
 
 Now we can add our newly created thing to the server and start it:
@@ -95,14 +116,17 @@ A MultiLevelSensor (a sensor that returns a level instead of just on/off) has on
 First we create a new Thing:
 
 ```python
-sensor = Thing(
-    'urn:dev:ops:my-humidity-sensor-1234',
-    'My Humidity Sensor',
-     ['MultiLevelSensor'],
-     'A web connected humidity sensor'
-)
-```
+from webthing import Thing, Property, Value
 
+class Light(Thing):
+    type = ['MultiLevelSensor'],
+    description = 'A web connected humidity sensor'
+    
+    super().__init__(
+        'urn:dev:ops:my-humidity-sensor-1234',
+        'My Humidity Sensor',
+    )
+```
 
 Then we create and add the appropriate property:
 
@@ -111,22 +135,22 @@ level: tells us what the sensor is actually reading
 Contrary to the light, the value cannot be set via an API call, as it wouldn't make much sense, to SET what a sensor is reading. Therefore, we are creating a readOnly property.
 
 ```python
-level = Value(0.0);
-
-await sensor.add_property(
-    Property(
-        'level',
-        level,
-        metadata={
-            '@type': 'LevelProperty',
-            'title': 'Humidity',
-            'type': 'number',
-            'description': 'The current humidity in %',
-            'minimum': 0,
-            'maximum': 100,
-            'unit': 'percent',
-            'readOnly': True,
-        }))
+async def build(self): 
+    await self.add_property(
+        Property(
+            'level',
+            Value(0.0),
+            metadata={
+                '@type': 'LevelProperty',
+                'title': 'Humidity',
+                'type': 'number',
+                'description': 'The current humidity in %',
+                'minimum': 0,
+                'maximum': 100,
+                'unit': 'percent',
+                'readOnly': True,
+            }))
+    return self
 ```
 
 
