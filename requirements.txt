@@ -3,6 +3,7 @@ jsonschema>=3.2.0
 pyee>=7.0.0
 zeroconf>=0.27.0
 ujson
+pyjwt
 httpx==0.13.*
 starlette==0.13.*
 uvicorn==0.11.*

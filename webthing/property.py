@@ -58,7 +58,7 @@ class Property:
         if "links" not in description:
             description["links"] = []
 
-        if description["@type"] in ["VideoProperty"]:
+        if description["@type"] in ["VideoProperty", "ImageProperty"]:
             description["links"].append(
                 {"rel": "property", "href": self.href, "mediaType": self.media_type}
             )

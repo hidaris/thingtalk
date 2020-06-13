@@ -99,4 +99,5 @@ class Light(Thing):
 
 
 with background_thread_loop() as loop:
-    app = WebThingServer(loop, Light, additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).create()
+    app = WebThingServer(loop, Light,
+                         additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).create()

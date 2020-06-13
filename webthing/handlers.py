@@ -437,7 +437,7 @@ class ActionsHandler(BaseHandler):
             input_ = None
             if "input" in action_params:
                 input_ = action_params["input"]
-            print(input_)
+            print(f"input_ {input_}")
             action = await thing.perform_action(action_name, input_)
             if action:
                 response.update(await action.as_action_description())
