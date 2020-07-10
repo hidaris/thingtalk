@@ -17,6 +17,7 @@ requirements = [
     "jsonschema>=3.2.0",
     "zeroconf>=0.27.0",
     "ujson",
+    "pyjwt",
     "httpx==0.13.*",
     "starlette==0.13.*",
     "uvicorn==0.11.*",
@@ -24,7 +25,7 @@ requirements = [
 
 setup(
     name="aiowebthing",
-    version="0.1.13",
+    version="0.1.14",
     description="Web of Thing async implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",
