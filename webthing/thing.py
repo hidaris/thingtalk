@@ -255,7 +255,7 @@ class Thing:
         prop = await self.find_property(property_name)
         if not prop:
             return
-        print(f"set {self.title}'s property {property_name} to {value}")
+        print(f"set {self.id}'s property {property_name} to {value}")
         await prop.set_value(value)
 
     async def sync_property(self, property_name, value):
@@ -292,9 +292,10 @@ class Thing:
         event -- the event that occurred
         """
         self.events.append(event)
+        await event.set_thing(self)
         await self.event_notify(event)
 
-    async def add_available_event(self, name, metadata):
+    async def add_available_event(self, cls, metadata):
         """
         Add an available event.
         name -- name of the event
@@ -303,7 +304,7 @@ class Thing:
         if metadata is None:
             metadata = {}
 
-        self.available_events[name] = {
+        self.available_events[cls.name] = {
             "metadata": metadata,
             "subscribers": {},
         }
@@ -449,6 +450,7 @@ class Thing:
         Notify all subscribers of an event.
         event -- the event that occurred
         """
+
         if event.name not in self.available_events:
             return
 

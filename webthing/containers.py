@@ -38,14 +38,6 @@ class MultipleThings:
         Get the thing at the given index.
         idx -- the index
         """
-        # try:
-        #     idx = int(idx)
-        # except ValueError:
-        #     return None
-
-        # if idx < 0 or idx >= len(self.things):
-        #     return None
-
         return self.things.get(idx, None)
 
     async def get_things(self):
@@ -58,3 +50,31 @@ class MultipleThings:
 
     async def add_thing(self, thing):
         self.things.update({thing.id: thing})
+        server = self.things.get('urn:webthing:server')
+
+        await server.add_event(DevicePairingEvent({
+            '@type': thing.type,
+            'id': thing.id,
+            'title': thing.title
+        }))
+
+    async def remove_thing(self, thing):
+        self.things.update({thing.id: thing})
+        server = self.things.get('urn:webthing:server')
+
+        await server.add_event(DeviceRemoveEvent({
+            '@type': thing.type,
+            'id': thing.id,
+            'title': thing.title
+        }))
+
+
+from .event import Event
+
+
+class DevicePairingEvent(Event):
+    name = "device_pairing"
+
+
+class DeviceRemoveEvent(Event):
+    name = "device_removed"

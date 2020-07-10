@@ -23,9 +23,14 @@ from .handlers import (
     ActionIDHandler,
     EventsHandler,
 )
-from .containers import MultipleThings, SingleThing
+from .containers import (
+    MultipleThings, SingleThing, DevicePairingEvent, DeviceRemoveEvent
+)
 from .utils import get_addresses, get_ip
 from .mixins import AsyncMixin
+from .thing import Thing
+from .value import Value
+from .property import Property
 
 
 class DefaultHeaderMiddleware(BaseHTTPMiddleware):
@@ -48,6 +53,71 @@ middlewares = [
     Middleware(DefaultHeaderMiddleware),
     Middleware(TrustedHostMiddleware, allowed_hosts=["*"]),
 ]
+
+
+class Server(Thing):
+    type = ["Server"]
+    description = "Webthing Server"
+
+    def __init__(self):
+        super().__init__(
+            "urn:webthing:server",
+            "Webthing Server",
+        )
+
+    async def build(self):
+        await self.add_property(
+            Property(
+                "state",
+                Value("ON"),
+                metadata={
+                    "@type": "ServerStateProperty",
+                    "title": "State",
+                    "type": "string",
+                    "enum": ["ON", "OFF", "REBOOT"],
+                    "description": "state of webthing server",
+                },
+            )
+        )
+
+        await self.add_available_event(
+            DevicePairingEvent,
+            {
+                "description": "new device",
+                "type": "object",
+                "required": ["@type", "id", "title"],
+                "properties": {
+                    "@type": {
+                        "type": "array",
+                    },
+                    "id": {
+                        "type": "string",
+                    },
+                    "title": {
+                        "type": "string",
+                    },
+                },
+            }
+        )
+
+        await self.add_available_event(
+            DeviceRemoveEvent,
+            {
+                "description": "device removed event",
+                "type": "object",
+                "required": ["id", "title"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                    },
+                    "title": {
+                        "type": "string",
+                    },
+                },
+            }
+        )
+
+        return self
 
 
 class WebThingServer(AsyncMixin):
@@ -81,8 +151,9 @@ class WebThingServer(AsyncMixin):
         additional_on_shutdown -- list of additional shutdown event handlers
         """
         self._loop = loop
-        self.things = None  # [] if thing_cls is None else list(thing_cls)
-        self.thing_cls = thing_cls
+        server = self._run_async(Server().build())
+        self.things = MultipleThings({server.id: server}, "things")
+        self.thing_cls = thing_cls if isinstance(thing_cls, list) else [thing_cls]
         self.port = port
         self.hostname = hostname
         self.base_path = base_path.rstrip("/") if base_path else "/things"
@@ -114,13 +185,9 @@ class WebThingServer(AsyncMixin):
         return self._run_async(self._create())
 
     async def config_things(self):
-        if isinstance(self.thing_cls, list):
-            self.things = MultipleThings({}, "things")
-            for cls in self.thing_cls:
-                thing = await cls().build()
-                await self.things.add_thing(thing)
-        else:
-            self.things = SingleThing(await self.thing_cls().build())
+        for cls in self.thing_cls:
+            thing = await cls().build()
+            await self.things.add_thing(thing)
 
     async def config_routes(self):
         if isinstance(self.things, MultipleThings):
@@ -244,7 +311,6 @@ class WebThingServer(AsyncMixin):
         kwargs = {'port': self.port, 'properties': {
             'path': '/',
         }, 'server': '{}.local.'.format(socket.gethostname()), 'addresses': [socket.inet_aton(get_ip())]}
-
         self.service_info = ServiceInfo(*args, **kwargs)
         self.zeroconf = Zeroconf()
         self.zeroconf.register_service(self.service_info)

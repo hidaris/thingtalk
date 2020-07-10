@@ -51,9 +51,10 @@ class ThingsHandler(BaseHandler):
         for idx, thing in await self.things.get_things():
             description = await thing.as_thing_description()
             description["href"] = await thing.get_href()
-            description["links"].append(
-                {"rel": "alternate", "href": f"{ws_href}{await thing.get_href()}", }
-            )
+            description["links"].append({
+                "rel": "alternate",
+                "href": f"{ws_href}{await thing.get_href()}",
+            })
             description[
                 "base"
             ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
@@ -204,7 +205,6 @@ class WsThingHandler(WebSocketEndpoint):
         Handle an incoming message.
         message -- message to handle
         """
-
         if "messageType" not in message or "data" not in message:
             try:
                 await websocket.send_json(
@@ -240,7 +240,6 @@ class WsThingHandler(WebSocketEndpoint):
         if msg_type == "setProperty":
             for property_name, property_value in message["data"].items():
                 try:
-                    print(f"debug {property_name}: {property_value}")
                     await self.thing.set_property(property_name, property_value)
                 except PropertyError as e:
                     try:
@@ -257,7 +256,6 @@ class WsThingHandler(WebSocketEndpoint):
         elif msg_type == "syncProperty":
             for property_name, property_value in message["data"].items():
                 try:
-                    print(f"debug {property_name}: {property_value}")
                     await self.thing.sync_property(property_name, property_value)
                 except PropertyError as e:
                     try:

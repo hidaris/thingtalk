@@ -7,14 +7,14 @@ class Event:
 
     name = None
 
-    def __init__(self, thing, data=None):
+    def __init__(self, data=None):
         """
         Initialize the object.
         thing -- Thing this event belongs to
         name -- name of the event
         data -- data associated with the event
         """
-        self.thing = thing
+        self.thing = None
         self.data = data
         self.time = timestamp()
 
@@ -35,6 +35,10 @@ class Event:
     async def get_thing(self):
         """Get the thing associated with this event."""
         return self.thing
+
+    async def set_thing(self, thing):
+        """Set the thing associated with this event."""
+        self.thing = thing
 
     async def get_name(self):
         """Get the event's name."""
