@@ -60,6 +60,7 @@ class MultipleThings:
 
     async def remove_thing(self, thing):
         self.things.update({thing.id: thing})
+        del self.things[thing.id]
         server = self.things.get('urn:webthing:server')
 
         await server.add_event(DeviceRemoveEvent({
