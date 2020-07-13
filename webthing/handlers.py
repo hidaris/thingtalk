@@ -9,7 +9,7 @@ from starlette.responses import UJSONResponse
 from starlette.exceptions import HTTPException
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 
-from .middlewares import requires
+from .auth import requires
 from .errors import PropertyError
 
 
@@ -40,7 +40,7 @@ class ThingsHandler(BaseHandler):
     """Handle a request to / when the server manages multiple things."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request: Request):
         """
         Handle a GET request.
         property_name -- the name of the property from the URL path
@@ -49,26 +49,39 @@ class ThingsHandler(BaseHandler):
 
         descriptions = []
         for idx, thing in await self.things.get_things():
-            description = await thing.as_thing_description()
-            description["href"] = await thing.get_href()
-            description["links"].append({
-                "rel": "alternate",
-                "href": f"{ws_href}{await thing.get_href()}",
-            })
-            description[
-                "base"
-            ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
-            if request.app.state.require_auth:
-                description["securityDefinitions"] = {
-                    "bearer_sc": {"scheme": "bearer", },
-                }
-                description["security"] = "bearer_sc"
-            else:
+            if not request.state.require_auth:
+                description = await thing.as_thing_description()
+                description["href"] = await thing.get_href()
+                description["links"].append({
+                    "rel": "alternate",
+                    "href": f"{ws_href}{await thing.get_href()}",
+                })
+                description[
+                    "base"
+                ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
+
                 description["securityDefinitions"] = {
                     "nosec_sc": {"scheme": "nosec", },
                 }
                 description["security"] = "nosec_sc"
-            descriptions.append(description)
+                descriptions.append(description)
+            elif request.user in await thing.get_owners():
+                description = await thing.as_thing_description()
+                description["href"] = await thing.get_href()
+                description["links"].append({
+                    "rel": "alternate",
+                    "href": f"{ws_href}{await thing.get_href()}",
+                })
+                description[
+                    "base"
+                ] = f"{request.url.scheme}://{request.headers.get('Host', '')}{await thing.get_href()}"
+
+                description["securityDefinitions"] = {
+                    "bearer_sc": {"scheme": "bearer", },
+                }
+                description["security"] = "bearer_sc"
+                descriptions.append(description)
+
 
         return UJSONResponse(descriptions)
 
@@ -77,7 +90,7 @@ class ThingHandler(BaseHandler):
     """Handle a request to /."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request, including websocket requests.
         thing_id -- ID of the thing this request is for
@@ -324,7 +337,7 @@ class PropertiesHandler(BaseHandler):
     """Handle a request to /properties."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -341,7 +354,7 @@ class PropertyHandler(BaseHandler):
     """Handle a request to /properties/<property>."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -362,7 +375,7 @@ class PropertyHandler(BaseHandler):
             raise HTTPException(status_code=404)
 
     @requires('authenticated')
-    async def put(self, request):
+    async def put(self, request: Request):
         """
         Handle a PUT request.
         thing_id -- ID of the thing this request is for
@@ -400,7 +413,7 @@ class ActionsHandler(BaseHandler):
     """Handle a request to /actions."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -414,7 +427,7 @@ class ActionsHandler(BaseHandler):
         return UJSONResponse(await thing.get_action_descriptions())
 
     @requires('authenticated')
-    async def post(self, request):
+    async def post(self, request: Request):
         """
         Handle a POST request.
         thing_id -- ID of the thing this request is for
@@ -450,7 +463,7 @@ class ActionHandler(BaseHandler):
     """Handle a request to /actions/<action_name>."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -468,7 +481,7 @@ class ActionHandler(BaseHandler):
         )
 
     @requires('authenticated')
-    async def post(self, request):
+    async def post(self, request: Request):
         """
         Handle a POST request.
         thing_id -- ID of the thing this request is for
@@ -509,7 +522,7 @@ class ActionIDHandler(BaseHandler):
     """Handle a request to /actions/<action_name>/<action_id>."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -531,7 +544,7 @@ class ActionIDHandler(BaseHandler):
         return UJSONResponse(await action.as_action_description())
 
     @requires('authenticated')
-    async def put(self, request):
+    async def put(self, request: Request):
         """
         Handle a PUT request.
         TODO: this is not yet defined in the spec
@@ -550,7 +563,7 @@ class ActionIDHandler(BaseHandler):
         return UJSONResponse({"msg": "success"}, status_code=200)
 
     @requires('authenticated')
-    async def delete(self, request):
+    async def delete(self, request: Request):
         """
         Handle a DELETE request.
         thing_id -- ID of the thing this request is for
@@ -575,7 +588,7 @@ class EventsHandler(BaseHandler):
     """Handle a request to /events."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for
@@ -593,7 +606,7 @@ class EventHandler(BaseHandler):
     """Handle a request to /events/<event_name>."""
 
     @requires('authenticated')
-    async def get(self, request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         thing_id -- ID of the thing this request is for

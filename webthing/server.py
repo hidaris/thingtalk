@@ -24,7 +24,7 @@ from .handlers import (
     EventsHandler,
 )
 from .containers import (
-    MultipleThings, SingleThing, DevicePairingEvent, DeviceRemoveEvent
+    MultipleThings, DevicePairingEvent, DeviceRemoveEvent
 )
 from .utils import get_addresses, get_ip
 from .mixins import AsyncMixin
@@ -105,12 +105,9 @@ class Server(Thing):
             {
                 "description": "device removed event",
                 "type": "object",
-                "required": ["id", "title"],
+                "required": ["id", ],
                 "properties": {
                     "id": {
-                        "type": "string",
-                    },
-                    "title": {
                         "type": "string",
                     },
                 },
@@ -195,54 +192,35 @@ class WebThingServer(AsyncMixin):
                 await thing.set_href_prefix(f"{self.base_path}/{idx}")
 
             base_route = [
-                Route(f"{self.base_path}",
-                      ThingsHandler),
+                Route(f"{self.base_path}", ThingsHandler),
             ]
             routes = [
-                Route("/{thing_id:str}",
-                      ThingHandler),
-                WebSocketRoute("/{thing_id:str}",
-                               WsThingHandler),
-                Route("/{thing_id:str}/properties",
-                      PropertiesHandler),
-                Route("/{thing_id:str}/properties/{property_name:str}",
-                      PropertyHandler),
-                Route("/{thing_id:str}/actions",
-                      ActionsHandler),
-                Route("/{thing_id:str}/actions/{action_name:str}",
-                      ActionHandler),
-                Route("/{thing_id:str}/actions/{action_name:str}/{action_id}",
-                      ActionHandler),
-                Route("/{thing_id:str}/events",
-                      EventHandler),
-                Route("/{thing_id:str}/events/{event_name:str}",
-                      EventHandler),
+                Route("/{thing_id:str}", ThingHandler),
+                WebSocketRoute("/{thing_id:str}", WsThingHandler),
+                Route("/{thing_id:str}/properties", PropertiesHandler),
+                Route("/{thing_id:str}/properties/{property_name:str}", PropertyHandler),
+                Route("/{thing_id:str}/actions", ActionsHandler),
+                Route("/{thing_id:str}/actions/{action_name:str}", ActionHandler),
+                Route("/{thing_id:str}/actions/{action_name:str}/{action_id}", ActionHandler),
+                Route("/{thing_id:str}/events", EventHandler),
+                Route("/{thing_id:str}/events/{event_name:str}", EventHandler),
             ]
         else:
             thing = await self.things.get_thing()
             await thing.set_href_prefix(self.base_path)
 
             base_route = [
-                Route(f"{self.base_path}",
-                      ThingHandler),
-                WebSocketRoute(f"{self.base_path}",
-                               WsThingHandler),
+                Route(f"{self.base_path}", ThingHandler),
+                WebSocketRoute(f"{self.base_path}", WsThingHandler),
             ]
             routes = [
-                Route("/properties",
-                      PropertiesHandler),
-                Route("/properties/{property_name:str}",
-                      PropertyHandler),
-                Route("/actions",
-                      ActionsHandler),
-                Route("/actions/{action_name:str}",
-                      ActionHandler),
-                Route("/actions/{action_name:str}/{action_id:str}",
-                      ActionIDHandler),
-                Route("/events",
-                      EventsHandler),
-                Route("/events/{event_name:str}",
-                      EventHandler),
+                Route("/properties", PropertiesHandler),
+                Route("/properties/{property_name:str}", PropertyHandler),
+                Route("/actions", ActionsHandler),
+                Route("/actions/{action_name:str}", ActionHandler),
+                Route("/actions/{action_name:str}/{action_id:str}", ActionIDHandler),
+                Route("/events", EventsHandler),
+                Route("/events/{event_name:str}", EventHandler),
             ]
 
         if isinstance(self.additional_routes, list):
@@ -287,7 +265,11 @@ class WebThingServer(AsyncMixin):
         on_shutdowns = await self.config_on_shutdowns()
 
         app = Starlette(
-            debug=True, routes=routes, middleware=middlewares, on_startup=on_startups, on_shutdown=on_shutdowns,
+            debug=True,
+            routes=routes,
+            middleware=middlewares,
+            on_startup=on_startups,
+            on_shutdown=on_shutdowns,
         )
 
         app.state.things = self.things
@@ -308,9 +290,14 @@ class WebThingServer(AsyncMixin):
             '_webthing._tcp.local.',
             f"{name}._webthing._tcp.local.",
         ]
-        kwargs = {'port': self.port, 'properties': {
-            'path': '/',
-        }, 'server': '{}.local.'.format(socket.gethostname()), 'addresses': [socket.inet_aton(get_ip())]}
+        kwargs = {
+            'port': self.port,
+            'properties': {
+                'path': '/',
+            },
+            'server': f"{socket.gethostname()}.local.",
+            'addresses': [socket.inet_aton(get_ip())]
+        }
         self.service_info = ServiceInfo(*args, **kwargs)
         self.zeroconf = Zeroconf()
         self.zeroconf.register_service(self.service_info)

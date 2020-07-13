@@ -19,6 +19,7 @@ class Thing:
         id_ -- the thing's unique ID - must be a URI
         title -- the thing's title
         type_ -- the thing's type(s)
+        owners_ -- the thing's owner(s)
         description -- description of the thing
         """
         if not isinstance(self.type, list):
@@ -33,6 +34,7 @@ class Thing:
         self.actions = {}
         self.events = []
         self.subscribers = {}
+        self.owners = []
         self.href_prefix = ""
         self.ui_href = None
 
@@ -165,7 +167,6 @@ class Thing:
         descriptions = []
 
         if action_name is None:
-            print(self.actions)
             for name in self.actions:
                 for action in self.actions[name]:
                     descriptions.append(await action.as_action_description())
@@ -464,3 +465,16 @@ class Thing:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):
                 pass
+
+    async def add_owner(self, owner: str):
+        """
+        Add a new owner.
+        owner -- the owner
+        """
+        self.owners.append(owner)
+        # await event.set_thing(self)
+        # await self.event_notify(event)
+
+    async def get_owners(self):
+        """Get this thing's owner(s)."""
+        return self.owners
