@@ -10,10 +10,10 @@ from starlette.websockets import WebSocketDisconnect
 class Thing:
     """A Web Thing."""
 
-    type = []
+    type = set()
     description = ""
 
-    def __init__(self, id_, title):
+    def __init__(self, id_, title, type_=[], description_=""):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -22,8 +22,13 @@ class Thing:
         owners_ -- the thing's owner(s)
         description -- description of the thing
         """
-        if not isinstance(self.type, list):
-            self.type = [self.type]
+        if not isinstance(type_, list):
+            self.type.add(type_)
+        else:
+            for i in type_:
+                self.type.add(i)
+
+        self.description = description_
 
         self.id = id_
         self.context = "https://iot.mozilla.org/schemas"
@@ -78,7 +83,7 @@ class Thing:
             thing["description"] = self.description
 
         if self.type:
-            thing["@type"] = self.type
+            thing["@type"] = list(self.type)
 
         return thing
 

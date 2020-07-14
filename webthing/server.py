@@ -121,16 +121,16 @@ class WebThingServer(AsyncMixin):
     """Server to represent a Web Thing over HTTP."""
 
     def __init__(
-            self,
-            loop,
-            thing_cls=None,
-            port=8000,
-            hostname=None,
-            base_path="",
-            additional_routes=None,
-            additional_middlewares=None,
-            additional_on_startup=None,
-            additional_on_shutdown=None,
+        self,
+        loop,
+        thing_cls=None,
+        port=8000,
+        hostname=None,
+        base_path="",
+        additional_routes=None,
+        additional_middlewares=None,
+        additional_on_startup=None,
+        additional_on_shutdown=None,
     ):
         """
         Initialize the WebThingServer.
