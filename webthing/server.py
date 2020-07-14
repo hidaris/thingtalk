@@ -223,6 +223,7 @@ class WebThingServer(AsyncMixin):
                 Route("/events/{event_name:str}", EventHandler),
             ]
 
+        # should additional_routes also have prefix?
         if isinstance(self.additional_routes, list):
             routes = self.additional_routes + routes
 

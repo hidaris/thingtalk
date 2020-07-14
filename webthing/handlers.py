@@ -40,7 +40,7 @@ class ThingsHandler(BaseHandler):
     """Handle a request to / when the server manages multiple things."""
 
     @requires('authenticated')
-    async def get(self, request: Request: Request):
+    async def get(self, request: Request):
         """
         Handle a GET request.
         property_name -- the name of the property from the URL path
@@ -49,7 +49,7 @@ class ThingsHandler(BaseHandler):
 
         descriptions = []
         for idx, thing in await self.things.get_things():
-            if not request.state.require_auth:
+            if not request.app.state.require_auth:
                 description = await thing.as_thing_description()
                 description["href"] = await thing.get_href()
                 description["links"].append({
