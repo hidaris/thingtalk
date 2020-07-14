@@ -25,7 +25,7 @@ requirements = [
 
 setup(
     name="aiowebthing",
-    version="0.1.14",
+    version="0.1.15",
     description="High performance implementation of Web of Things",
     long_description=long_description,
     long_description_content_type="text/markdown",
