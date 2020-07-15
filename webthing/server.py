@@ -3,6 +3,7 @@
 import socket
 
 from zeroconf import ServiceInfo, Zeroconf
+from tortoise import Tortoise
 
 from starlette.routing import Route, WebSocketRoute, Mount
 from starlette.applications import Starlette
@@ -23,14 +24,11 @@ from .handlers import (
     ActionIDHandler,
     EventsHandler,
 )
-from .containers import (
-    MultipleThings, DevicePairingEvent, DeviceRemoveEvent
-)
+from .containers import MultipleThings
 from .utils import get_addresses, get_ip
 from .mixins import AsyncMixin
-from .thing import Thing
-from .value import Value
-from .property import Property
+from .db import init
+from .thing import Server
 
 
 class DefaultHeaderMiddleware(BaseHTTPMiddleware):
@@ -53,68 +51,6 @@ middlewares = [
     Middleware(DefaultHeaderMiddleware),
     Middleware(TrustedHostMiddleware, allowed_hosts=["*"]),
 ]
-
-
-class Server(Thing):
-    type = ["Server"]
-    description = "Webthing Server"
-
-    def __init__(self):
-        super().__init__(
-            "urn:webthing:server",
-            "Webthing Server",
-        )
-
-    async def build(self):
-        await self.add_property(
-            Property(
-                "state",
-                Value("ON"),
-                metadata={
-                    "@type": "ServerStateProperty",
-                    "title": "State",
-                    "type": "string",
-                    "enum": ["ON", "OFF", "REBOOT"],
-                    "description": "state of webthing server",
-                },
-            )
-        )
-
-        await self.add_available_event(
-            DevicePairingEvent,
-            {
-                "description": "new device",
-                "type": "object",
-                "required": ["@type", "id", "title"],
-                "properties": {
-                    "@type": {
-                        "type": "array",
-                    },
-                    "id": {
-                        "type": "string",
-                    },
-                    "title": {
-                        "type": "string",
-                    },
-                },
-            }
-        )
-
-        await self.add_available_event(
-            DeviceRemoveEvent,
-            {
-                "description": "device removed event",
-                "type": "object",
-                "required": ["id", ],
-                "properties": {
-                    "id": {
-                        "type": "string",
-                    },
-                },
-            }
-        )
-
-        return self
 
 
 class WebThingServer(AsyncMixin):
@@ -244,14 +180,14 @@ class WebThingServer(AsyncMixin):
         return middlewares
 
     async def config_on_startups(self):
-        on_startups = [self.start]
+        on_startups = [init, self.start]
         if self.additional_on_startup:
             on_startups.extend(self.additional_on_startup)
 
         return on_startups
 
     async def config_on_shutdowns(self):
-        on_shutdowns = [self.stop]
+        on_shutdowns = [Tortoise.close_connections, self.stop]
         if self.additional_on_shutdown:
             assert isinstance(self.additional_on_shutdown, list)
             on_shutdowns.extend(self.additional_on_shutdown)

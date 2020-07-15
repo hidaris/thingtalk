@@ -51,3 +51,11 @@ class Event:
     async def get_time(self):
         """Get the event's timestamp."""
         return self.time
+
+
+class ThingPairedEvent(Event):
+    name = "thing_paired"
+
+
+class ThingRemovedEvent(Event):
+    name = "thing_removed"

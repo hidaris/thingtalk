@@ -1,3 +1,6 @@
+from .event import ThingPairedEvent, ThingRemovedEvent
+
+
 class SingleThing:
     """A container for a single thing."""
 
@@ -52,7 +55,7 @@ class MultipleThings:
         self.things.update({thing.id: thing})
         server = self.things.get('urn:webthing:server')
 
-        await server.add_event(DevicePairingEvent({
+        await server.add_event(ThingPairedEvent({
             '@type': thing.type,
             'id': thing.id,
             'title': thing.title
@@ -62,17 +65,6 @@ class MultipleThings:
         del self.things[thing_id]
         server = self.things.get('urn:webthing:server')
 
-        await server.add_event(DeviceRemoveEvent({
+        await server.add_event(ThingRemovedEvent({
             'id': thing_id,
         }))
-
-
-from .event import Event
-
-
-class DevicePairingEvent(Event):
-    name = "device_pairing"
-
-
-class DeviceRemoveEvent(Event):
-    name = "device_removed"

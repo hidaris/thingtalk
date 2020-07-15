@@ -6,6 +6,12 @@ from jsonschema.exceptions import ValidationError
 from websockets import ConnectionClosedOK
 from starlette.websockets import WebSocketDisconnect
 
+from .model import Thing as ThingModel
+from .action import Rename
+from .event import ThingPairedEvent, ThingRemovedEvent
+from .value import Value
+from .property import Property
+
 
 class Thing:
     """A Web Thing."""
@@ -42,12 +48,31 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
+        self.add_init_action(
+            {
+                "title": "rename",
+                "description": "rename the thing's title",
+                "input": {
+                    "type": "object",
+                    "required": ["title", ],
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                        },
+                    },
+                },
+            },
+            Rename
+        )
 
     async def as_thing_description(self):
         """
         Return the thing state as a Thing Description.
         Returns the state as a dictionary.
         """
+        maybe_thing = await ThingModel.get_or_none(uid=self.id)
+        if maybe_thing:
+            self.title = maybe_thing.title
         thing = {
             "id": self.id,
             "title": self.title,
@@ -371,6 +396,23 @@ class Thing:
         }
         self.actions[name] = []
 
+    def add_init_action(self, metadata, cls):
+        """
+        Add an available action.
+        name -- name of the action, default use cls.name
+        metadata -- action metadata, i.e. type, description, etc., as a dict
+        cls -- class to instantiate for this action
+        """
+        if metadata is None:
+            metadata = {}
+
+        name = cls.name
+        self.available_actions[name] = {
+            "metadata": metadata,
+            "class": cls,
+        }
+        self.actions[name] = []
+
     async def add_subscriber(self, ws):
         """
         Add a new websocket subscriber.
@@ -483,3 +525,65 @@ class Thing:
     async def get_owners(self):
         """Get this thing's owner(s)."""
         return self.owners
+
+
+class Server(Thing):
+    type = ["Server"]
+    description = "Webthing Server"
+
+    def __init__(self):
+        super().__init__(
+            "urn:webthing:server",
+            "Webthing Server",
+        )
+
+    async def build(self):
+        await self.add_property(
+            Property(
+                "state",
+                Value("ON"),
+                metadata={
+                    "@type": "ServerStateProperty",
+                    "title": "State",
+                    "type": "string",
+                    "enum": ["ON", "OFF", "REBOOT"],
+                    "description": "state of webthing server",
+                },
+            )
+        )
+
+        await self.add_available_event(
+            ThingPairedEvent,
+            {
+                "description": "new device",
+                "type": "object",
+                "required": ["@type", "id", "title"],
+                "properties": {
+                    "@type": {
+                        "type": "array",
+                    },
+                    "id": {
+                        "type": "string",
+                    },
+                    "title": {
+                        "type": "string",
+                    },
+                },
+            }
+        )
+
+        await self.add_available_event(
+            ThingRemovedEvent,
+            {
+                "description": "device removed event",
+                "type": "object",
+                "required": ["id", ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                    },
+                },
+            }
+        )
+
+        return self

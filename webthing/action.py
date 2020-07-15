@@ -3,6 +3,7 @@
 import uuid
 
 from .utils import timestamp
+from .model import Thing as ThingModel
 
 
 class Action:
@@ -107,3 +108,12 @@ class Action:
         self.status = "completed"
         self.time_completed = timestamp()
         await self.thing.action_notify(self)
+
+
+class Rename(Action):
+    name = "rename"
+
+    async def perform_action(self):
+        tuple = await ThingModel.get_or_create(uid=self.thing.id, title=self.thing.title)
+        thing = tuple[0]
+        await ThingModel.filter(uid=thing.uid).update(title=self.input["title"])
