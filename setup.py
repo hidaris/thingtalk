@@ -21,11 +21,12 @@ requirements = [
     "httpx==0.13.*",
     "starlette==0.13.*",
     "uvicorn==0.11.*",
+    "tortoise-orm==0.16.*",
 ]
 
 setup(
     name="aiowebthing",
-    version="0.1.15",
+    version="0.1.16",
     description="High performance implementation of Web of Things",
     long_description=long_description,
     long_description_content_type="text/markdown",
