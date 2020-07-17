@@ -16,7 +16,7 @@ from .property import Property
 class Thing:
     """A Web Thing."""
 
-    type = set()
+    type = []
     description = ""
 
     def __init__(self, id_, title, type_=[], description_=""):
@@ -28,11 +28,13 @@ class Thing:
         owners_ -- the thing's owner(s)
         description -- description of the thing
         """
+        self._type = set()
         if not isinstance(type_, list):
-            self.type.add(type_)
+            self._type.add(type_)
         else:
             for i in type_:
-                self.type.add(i)
+                self._type.add(i)
+        self._type.union(set(self.type))
 
         self.description = description_
 
@@ -73,6 +75,7 @@ class Thing:
         maybe_thing = await ThingModel.get_or_none(uid=self.id)
         if maybe_thing:
             self.title = maybe_thing.title
+        print(self._type)
         thing = {
             "id": self.id,
             "title": self.title,
@@ -107,8 +110,8 @@ class Thing:
         if self.description:
             thing["description"] = self.description
 
-        if self.type:
-            thing["@type"] = list(self.type)
+        if self._type:
+            thing["@type"] = list(self._type)
 
         return thing
 

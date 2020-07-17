@@ -56,7 +56,7 @@ class MultipleThings:
         server = self.things.get('urn:webthing:server')
 
         await server.add_event(ThingPairedEvent({
-            '@type': list(thing.type),
+            '@type': list(thing._type),
             'id': thing.id,
             'title': thing.title
         }))
