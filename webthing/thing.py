@@ -75,7 +75,7 @@ class Thing:
         maybe_thing = await ThingModel.get_or_none(uid=self.id)
         if maybe_thing:
             self.title = maybe_thing.title
-        print(self._type)
+
         thing = {
             "id": self.id,
             "title": self.title,
