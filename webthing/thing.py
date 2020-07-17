@@ -8,7 +8,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from .model import Thing as ThingModel
 from .action import Rename
-from .event import ThingPairedEvent, ThingRemovedEvent
+from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
 from .value import Value
 from .property import Property
 
@@ -555,7 +555,7 @@ class Server(Thing):
         await self.add_available_event(
             ThingPairedEvent,
             {
-                "description": "new device",
+                "description": "new thing paired",
                 "type": "object",
                 "required": ["@type", "id", "title"],
                 "properties": {
@@ -576,6 +576,20 @@ class Server(Thing):
             ThingRemovedEvent,
             {
                 "description": "device removed event",
+                "type": "object",
+                "required": ["id", ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                    },
+                },
+            }
+        )
+
+        await self.add_available_event(
+            ThingPairingEvent,
+            {
+                "description": "thing pairing event",
                 "type": "object",
                 "required": ["id", ],
                 "properties": {

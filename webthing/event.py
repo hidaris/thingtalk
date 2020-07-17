@@ -53,6 +53,10 @@ class Event:
         return self.time
 
 
+class ThingPairingEvent(Event):
+    name = "thing_pairing"
+
+
 class ThingPairedEvent(Event):
     name = "thing_paired"
 
