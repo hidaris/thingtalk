@@ -538,6 +538,7 @@ class Server(Thing):
         super().__init__(
             "urn:webthing:server",
             "Webthing Server",
+            type_=["Server"]
         )
 
     async def build(self):
