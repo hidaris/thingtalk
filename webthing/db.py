@@ -6,7 +6,7 @@ async def init():
     #  also specify the app name of "models"
     #  which contain models from "app.models"
     await Tortoise.init(
-        db_url='sqlite://db.sqlite3',
+        db_url='sqlite:///data/db.sqlite3',
         modules={'models': ['webthing.model']}
     )
     # Generate the schema
