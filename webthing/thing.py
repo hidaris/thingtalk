@@ -32,9 +32,9 @@ class Thing:
         if not isinstance(type_, list):
             self._type.add(type_)
         else:
-            for i in type_:
-                self._type.add(i)
-        self._type.union(set(self.type))
+            self._type = self._type.union(set(type_))
+
+        self._type = self._type.union(set(self.type))
 
         self.description = description_
 
@@ -532,13 +532,12 @@ class Thing:
 
 class Server(Thing):
     type = ["Server"]
-    description = "Webthing Server"
+    description = "Web Thing Environment"
 
     def __init__(self):
         super().__init__(
             "urn:webthing:server",
-            "Webthing Server",
-            type_=["Server"]
+            "Web Thing Environment",
         )
 
     async def build(self):
