@@ -65,7 +65,7 @@ class ThingsHandler(BaseHandler):
                 }
                 description["security"] = "nosec_sc"
                 descriptions.append(description)
-            elif request.user in await thing.get_owners():
+            elif request.user.display_name in await thing.get_owners():
                 description = await thing.as_thing_description()
                 description["href"] = await thing.get_href()
                 description["links"].append({
@@ -81,7 +81,6 @@ class ThingsHandler(BaseHandler):
                 }
                 description["security"] = "bearer_sc"
                 descriptions.append(description)
-
 
         return UJSONResponse(descriptions)
 
