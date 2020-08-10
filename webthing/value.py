@@ -44,7 +44,7 @@ class Value(EventEmitter):
         Notify observers of a new value.
         value -- new value
         """
-        if value is not None and value != self.last_value:
+        if value is not None:
             self.last_value = value
             if with_action:
                 self.emit('update', value)
