@@ -62,9 +62,13 @@ class MultipleThings:
         }))
 
     async def remove_thing(self, thing_id):
-        del self.things[thing_id]
-        server = self.things.get('urn:webthing:server')
+        # 来自 zigbee2mqtt 的 left_network 事件
+        # 由于适配问题，thingtalk 中不一定存在对应的设备
+        if self.things.get(thing_id):
+            del self.things[thing_id]
 
-        await server.add_event(ThingRemovedEvent({
-            'id': thing_id,
-        }))
+            server = self.things.get('urn:webthing:server')
+
+            await server.add_event(ThingRemovedEvent({
+                'id': thing_id,
+            }))
