@@ -129,3 +129,6 @@ class Property:
     async def get_metadata(self):
         """Get the metadata associated with this property."""
         return self.metadata
+
+    def __repr__(self):
+        return f"(Property {self.name})"

@@ -8,7 +8,7 @@ from .schema import BaseModel
 class Event:
     """An Event represents an individual event from a thing."""
 
-    name = None
+    title = None
     description = None
 
     def __init__(self, data=None):
@@ -37,11 +37,11 @@ class Event:
         Returns a dictionary describing the event.
         """
         description = {
-            self.name: {"timestamp": self.time, },
+            self.title: {"timestamp": self.time, },
         }
 
         if self.data is not None:
-            description[self.name]["data"] = self.data
+            description[self.title]["data"] = self.data
 
         return description
 
@@ -55,7 +55,7 @@ class Event:
 
     async def get_name(self):
         """Get the event's name."""
-        return self.name
+        return self.title
 
     async def get_data(self):
         """Get the event's data."""
@@ -67,7 +67,7 @@ class Event:
 
 
 class ThingPairingEvent(Event):
-    name = "thing_pairing"
+    title = "thing_pairing"
     description = "new thing pairing"
 
     class Schema(BaseModel):
@@ -75,7 +75,7 @@ class ThingPairingEvent(Event):
 
 
 class ThingPairedEvent(Event):
-    name = "thing_paired"
+    title = "thing_paired"
     description = "new thing paired"
 
     class Schema(BaseModel):
@@ -85,7 +85,7 @@ class ThingPairedEvent(Event):
 
 
 class ThingRemovedEvent(Event):
-    name = "thing_removed"
+    title = "thing_removed"
     description = "thing removed"
 
     class Schema(BaseModel):

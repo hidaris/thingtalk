@@ -138,7 +138,7 @@ class Thing:
         self.href_prefix = prefix
 
         for property_ in self.properties.values():
-            await property_.set_href_prefix(prefix)
+            property_.set_href_prefix(prefix)
 
         for action_name in self.actions.keys():
             for action in self.actions[action_name]:
@@ -242,8 +242,8 @@ class Thing:
         Remove a property from this thing.
         property_ -- property to remove
         """
-        if property_.title in self.properties:
-            del self.properties[property_.title]
+        if property_.name in self.properties:
+            del self.properties[property_.name]
 
     async def find_property(self, property_name):
         """
@@ -350,7 +350,7 @@ class Thing:
             metadata = cls.get_meta()
             # metadata = {}
 
-        self.available_events[cls.name] = {
+        self.available_events[cls.title] = {
             "metadata": metadata,
             "subscribers": {},
         }
