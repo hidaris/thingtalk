@@ -6,11 +6,12 @@ from jsonschema.exceptions import ValidationError
 from websockets import ConnectionClosedOK
 from starlette.websockets import WebSocketDisconnect
 
-from .model import Thing as ThingModel
-from .action import Rename
+# from .model import Thing as ThingModel
+from .action import Rename, Hello
 from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
 from .value import Value
 from .property import Property
+from .errors import PropertyError
 
 
 class Thing:
@@ -50,31 +51,32 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
-        self.add_init_action(
-            {
-                "title": "rename",
-                "description": "rename the thing's title",
-                "input": {
-                    "type": "object",
-                    "required": ["title", ],
-                    "properties": {
-                        "title": {
-                            "type": "string",
-                        },
-                    },
-                },
-            },
+        self.add_available_action(
             Rename
         )
+        self.add_available_action(Hello)
+        # {
+        #     "title": "rename",
+        #     "description": "rename the thing's title",
+        #     "input": {
+        #         "type": "object",
+        #         "required": ["title", ],
+        #         "properties": {
+        #             "title": {
+        #                 "type": "string",
+        #             },
+        #         },
+        #     },
+        # },
 
     async def as_thing_description(self):
         """
         Return the thing state as a Thing Description.
         Returns the state as a dictionary.
         """
-        maybe_thing = await ThingModel.get_or_none(uid=self.id)
-        if maybe_thing:
-            self.title = maybe_thing.title
+        # maybe_thing = await ThingModel.get_or_none(uid=self.id)
+        # if maybe_thing:
+        #     self.title = maybe_thing.title
 
         thing = {
             "id": self.id,
@@ -97,7 +99,9 @@ class Thing:
             ]
 
         for name, event in self.available_events.items():
+            print(event["metadata"])
             thing["events"][name] = event["metadata"]
+
             thing["events"][name]["links"] = [
                 {"rel": "event", "href": f"{self.href_prefix}/events/{name}", },
             ]
@@ -224,13 +228,13 @@ class Thing:
                 if await e.get_name() == event_name
             ]
 
-    async def add_property(self, property_):
+    def add_property(self, property_):
         """
         Add a property to this thing.
         property_ -- property to add
         """
-        await property_.set_href_prefix(self.href_prefix)
-        await property_.set_thing(self)
+        property_.set_href_prefix(self.href_prefix)
+        property_.set_thing(self)
         self.properties[property_.name] = property_
 
     async def remove_property(self, property_):
@@ -238,8 +242,8 @@ class Thing:
         Remove a property from this thing.
         property_ -- property to remove
         """
-        if property_.name in self.properties:
-            del self.properties[property_.name]
+        if property_.title in self.properties:
+            del self.properties[property_.title]
 
     async def find_property(self, property_name):
         """
@@ -290,7 +294,11 @@ class Thing:
         if not prop:
             return
         print(f"set {self.id}'s property {property_name} to {value}")
-        await prop.set_value(value)
+        try:
+            await prop.set_value(value)
+            # await self.property_notify(property_name, value)
+        except PropertyError as e:
+            await self.error_notify(e)
 
     async def sync_property(self, property_name, value):
         """
@@ -302,7 +310,10 @@ class Thing:
         if not prop:
             return
         print(f"sync {self.title}'s property {property_name} to {value}")
-        await prop.set_value(value, with_action=False)
+        try:
+            await prop.set_value(value, with_action=False)
+        except PropertyError as e:
+            await self.error_notify(e)
 
     async def get_action(self, action_name, action_id):
         """
@@ -329,14 +340,15 @@ class Thing:
         await event.set_thing(self)
         await self.event_notify(event)
 
-    async def add_available_event(self, cls, metadata):
+    def add_available_event(self, cls, metadata=None):
         """
         Add an available event.
         name -- name of the event
         metadata -- event metadata, i.e. type, description, etc., as a dict
         """
         if metadata is None:
-            metadata = {}
+            metadata = cls.get_meta()
+            # metadata = {}
 
         self.available_events[cls.name] = {
             "metadata": metadata,
@@ -382,7 +394,7 @@ class Thing:
         self.actions[action_name].remove(action)
         return True
 
-    async def add_available_action(self, metadata, cls):
+    def add_available_action(self, cls, metadata=None):
         """
         Add an available action.
         name -- name of the action, default use cls.name
@@ -390,26 +402,10 @@ class Thing:
         cls -- class to instantiate for this action
         """
         if metadata is None:
-            metadata = {}
+            metadata = cls.get_meta()
+            # metadata = {}
 
-        name = cls.name
-        self.available_actions[name] = {
-            "metadata": metadata,
-            "class": cls,
-        }
-        self.actions[name] = []
-
-    def add_init_action(self, metadata, cls):
-        """
-        Add an available action.
-        name -- name of the action, default use cls.name
-        metadata -- action metadata, i.e. type, description, etc., as a dict
-        cls -- class to instantiate for this action
-        """
-        if metadata is None:
-            metadata = {}
-
-        name = cls.name
+        name = cls.__name__.lower()
         self.available_actions[name] = {
             "metadata": metadata,
             "class": cls,
@@ -457,21 +453,31 @@ class Thing:
         ):
             self.available_events[name]["subscribers"].pop(id(ws))
 
-    async def property_notify(self, property_):
+    async def property_notify(self, property_, value_):
         """
         Notify all subscribers of a property change.
         property_ -- the property that changed
         """
         message = {
             "messageType": "propertyStatus",
-            "data": {property_.name: await property_.get_value(), },
+            "data": {property_.name: value_, },
         }
 
         for subscriber in list(self.subscribers.values()):
-            try:
-                await subscriber.send_json(message, mode="binary")
-            except (WebSocketDisconnect, ConnectionClosedOK):
-                pass
+            await subscriber.send_json(message, mode="binary")
+
+    async def error_notify(self, error_):
+        """
+        Notify all subscribers of a error.
+        error_ -- the error that reported
+        """
+        message = {
+            "messageType": "error",
+            "data": {"status": "400 Bad Request", "message": str(error_), },
+        }
+
+        for subscriber in list(self.subscribers.values()):
+            await subscriber.send_json(message, mode="binary")
 
     async def property_action(self, property_):
         """
@@ -502,7 +508,7 @@ class Thing:
         event -- the event that occurred
         """
 
-        if event.name not in self.available_events:
+        if event.title not in self.available_events:
             return
 
         message = {
@@ -510,7 +516,7 @@ class Thing:
             "data": await event.as_event_description(),
         }
 
-        for subscriber in list(self.available_events[event.name]["subscribers"].values()):
+        for subscriber in list(self.available_events[event.title]["subscribers"].values()):
             try:
                 await subscriber.send_json(message, mode="binary")
             except (WebSocketDisconnect, ConnectionClosedOK):
@@ -522,8 +528,6 @@ class Thing:
         owner -- the owner
         """
         self.owners.append(owner)
-        # await event.set_thing(self)
-        # await self.event_notify(event)
 
     async def get_owners(self):
         """Get this thing's owner(s)."""
@@ -536,12 +540,11 @@ class Server(Thing):
 
     def __init__(self):
         super().__init__(
-            "urn:webthing:server",
+            "urn:thingtalk:server",
             "Web Thing Environment",
         )
 
-    async def build(self):
-        await self.add_property(
+        self.add_property(
             Property(
                 "state",
                 Value("ON"),
@@ -550,57 +553,11 @@ class Server(Thing):
                     "title": "State",
                     "type": "string",
                     "enum": ["ON", "OFF", "REBOOT"],
-                    "description": "state of webthing server",
+                    "description": "state of thingtalk server",
                 },
             )
         )
 
-        await self.add_available_event(
-            ThingPairedEvent,
-            {
-                "description": "new thing paired",
-                "type": "object",
-                "required": ["@type", "id", "title"],
-                "properties": {
-                    "@type": {
-                        "type": "array",
-                    },
-                    "id": {
-                        "type": "string",
-                    },
-                    "title": {
-                        "type": "string",
-                    },
-                },
-            }
-        )
-
-        await self.add_available_event(
-            ThingRemovedEvent,
-            {
-                "description": "device removed event",
-                "type": "object",
-                "required": ["id", ],
-                "properties": {
-                    "id": {
-                        "type": "string",
-                    },
-                },
-            }
-        )
-
-        await self.add_available_event(
-            ThingPairingEvent,
-            {
-                "description": "thing pairing event",
-                "type": "object",
-                "required": ["id", ],
-                "properties": {
-                    "id": {
-                        "type": "string",
-                    },
-                },
-            }
-        )
-
-        return self
+        self.add_available_event(ThingPairedEvent)
+        self.add_available_event(ThingPairingEvent)
+        self.add_available_event(ThingRemovedEvent)

@@ -53,7 +53,7 @@ class MultipleThings:
 
     async def add_thing(self, thing):
         self.things.update({thing.id: thing})
-        server = self.things.get('urn:webthing:server')
+        server = self.things.get('urn:thingtalk:server')
 
         await server.add_event(ThingPairedEvent({
             '@type': list(thing._type),
@@ -67,7 +67,7 @@ class MultipleThings:
         if self.things.get(thing_id):
             del self.things[thing_id]
 
-            server = self.things.get('urn:webthing:server')
+            server = self.things.get('urn:thingtalk:server')
 
             await server.add_event(ThingRemovedEvent({
                 'id': thing_id,

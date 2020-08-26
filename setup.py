@@ -18,7 +18,7 @@ requirements = [
     "zeroconf>=0.27.0",
     "ujson",
     "pyjwt",
-    "httpx==0.13.*",
+    "httpx==0.14.*",
     "starlette==0.13.*",
     "uvicorn==0.11.*",
     "tortoise-orm==0.16.*",

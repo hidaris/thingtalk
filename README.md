@@ -119,7 +119,7 @@ A MultiLevelSensor (a sensor that returns a level instead of just on/off) has on
 First we create a new Thing:
 
 ```python
-from webthing import Thing, Property, Value
+from thingtalk import Thing, Property, Value
 
 class Light(Thing):
     type = ['MultiLevelSensor'],

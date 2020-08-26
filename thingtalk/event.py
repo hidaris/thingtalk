@@ -1,11 +1,15 @@
 """High-level Event base class implementation."""
+import typing
+
 from .utils import timestamp
+from .schema import BaseModel
 
 
 class Event:
     """An Event represents an individual event from a thing."""
 
     name = None
+    description = None
 
     def __init__(self, data=None):
         """
@@ -18,13 +22,22 @@ class Event:
         self.data = data
         self.time = timestamp()
 
+    @classmethod
+    def get_meta(cls):
+        assert hasattr(cls, 'Schema'), (
+            f"Class {cls.__name__} missing 'Schema' attribute"
+        )
+        schema = cls.Schema.schema()
+        schema["description"] = cls.description
+        return schema
+
     async def as_event_description(self):
         """
         Get the event description.
         Returns a dictionary describing the event.
         """
         description = {
-            self.name: {"timestamp": self.time,},
+            self.name: {"timestamp": self.time, },
         }
 
         if self.data is not None:
@@ -55,11 +68,25 @@ class Event:
 
 class ThingPairingEvent(Event):
     name = "thing_pairing"
+    description = "new thing pairing"
+
+    class Schema(BaseModel):
+        id: str
 
 
 class ThingPairedEvent(Event):
     name = "thing_paired"
+    description = "new thing paired"
+
+    class Schema(BaseModel):
+        id: str
+        type: typing.List[str]
+        title: str
 
 
 class ThingRemovedEvent(Event):
     name = "thing_removed"
+    description = "thing removed"
+
+    class Schema(BaseModel):
+        id: str

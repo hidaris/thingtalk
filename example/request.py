@@ -1,10 +1,11 @@
 from starlette.middleware import Middleware
 
-from thingtalk import background_thread_loop, Value, Thing, Property, Event, Action, WebThingServer
+from thingtalk import background_thread_loop, Value, Thing, Property, Event, Action, ThingTalk
 from starlette.middleware.cors import CORSMiddleware
 
 # import logging
 import time
+import httpx
 
 
 class OverheatedEvent(Event):
@@ -12,8 +13,8 @@ class OverheatedEvent(Event):
         Event.__init__(self, thing, "overheated", data=data)
 
 
-class FadeAction(Action):
-    title = "fade"
+class Request(Action):
+    title = "request"
 
     async def perform_action(self):
         time.sleep(self.input["duration"] / 1000)
@@ -21,8 +22,8 @@ class FadeAction(Action):
         await self.thing.add_event(OverheatedEvent(self.thing, 102))
 
 
-class Light(Thing):
-    type = ["OnOffSwitch"],
+class HTTPRequester(Thing):
+    type = ["HTTPRequester"],
     description = "A web connected lamp",
 
     def __init__(self):
@@ -45,29 +46,13 @@ class Light(Thing):
             )
         )
 
-        await self.add_property(
-            Property(
-                "brightness",
-                Value(50),
-                metadata={
-                    "@type": "BrightnessProperty",
-                    "title": "Brightness",
-                    "type": "integer",
-                    "description": "The level of light from 0-100",
-                    "minimum": 0,
-                    "maximum": 100,
-                    "unit": "percent",
-                },
-            )
-        )
-
         await self.add_available_action(
             {
-                "title": "Fade",
-                "description": "Fade the lamp to a given level",
+                "title": "Request",
+                "description": "Request Action",
                 "input": {
                     "type": "object",
-                    "required": ["brightness", "duration", ],
+                    "required": ["url", "method", "headers", ],
                     "properties": {
                         "brightness": {
                             "type": "integer",
@@ -75,15 +60,16 @@ class Light(Thing):
                             "maximum": 100,
                             "unit": "percent",
                         },
-                        "duration": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "unit": "milliseconds",
+                        "url": {
+                            "type": "string",
                         },
+                        "method": {
+                            "type": "string",
+                        }
                     },
                 },
             },
-            FadeAction,
+            Request,
         )
 
         await self.add_available_event(
@@ -99,5 +85,5 @@ class Light(Thing):
 
 
 with background_thread_loop() as loop:
-    app = WebThingServer(loop, Light,
-                         additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).create()
+    app = ThingTalk(loop, Light,
+                    additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).create()

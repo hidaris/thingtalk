@@ -59,6 +59,7 @@ class WebThingServer(AsyncMixin):
     def __init__(
         self,
         loop,
+        debug=True,
         thing_cls=None,
         port=8000,
         hostname=None,
@@ -84,6 +85,7 @@ class WebThingServer(AsyncMixin):
         additional_on_shutdown -- list of additional shutdown event handlers
         """
         self._loop = loop
+        self._debug = debug
         server = self._run_async(Server().build())
         self.things = MultipleThings({server.id: server}, "things")
         self.thing_cls = thing_cls if isinstance(thing_cls, list) else [thing_cls]
@@ -180,14 +182,14 @@ class WebThingServer(AsyncMixin):
         return middlewares
 
     async def config_on_startups(self):
-        on_startups = [init, self.start]
+        on_startups = [init, self.start, self.init_zmq, ]
         if self.additional_on_startup:
             on_startups.extend(self.additional_on_startup)
 
         return on_startups
 
     async def config_on_shutdowns(self):
-        on_shutdowns = [Tortoise.close_connections, self.stop]
+        on_shutdowns = [Tortoise.close_connections, self.stop, self.clean_zmq, ]
         if self.additional_on_shutdown:
             assert isinstance(self.additional_on_shutdown, list)
             on_shutdowns.extend(self.additional_on_shutdown)
@@ -202,7 +204,7 @@ class WebThingServer(AsyncMixin):
         on_shutdowns = await self.config_on_shutdowns()
 
         app = Starlette(
-            debug=True,
+            debug=self._debug,
             routes=routes,
             middleware=middlewares,
             on_startup=on_startups,

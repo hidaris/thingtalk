@@ -4,12 +4,15 @@ import uuid
 
 from .utils import timestamp
 from .model import Thing as ThingModel
+from .schema import BaseModel
 
 
 class Action:
     """An Action represents an individual action on a thing."""
 
-    name = ""
+    title = ""
+    description = ""
+    meta = {}
 
     def __init__(self, thing, input_, id_=uuid.uuid4().hex):
         """
@@ -23,10 +26,24 @@ class Action:
         self.thing = thing
         self.input = input_
         self.href_prefix = ""
-        self.href = f"/actions/{self.name}/{self.id}"
+        self.href = f"/actions/{self.title}/{self.id}"
         self.status = "created"
         self.time_requested = timestamp()
         self.time_completed = None
+        self.meta = None
+
+    @classmethod
+    def get_meta(cls):
+        assert hasattr(cls, 'Input'), (
+            f"Class {cls.__name__} missing 'Input' attribute"
+        )
+        schema = cls.Input.schema()
+        cls.meta = {
+            "title": cls.title,
+            "description": cls.description,
+            "input": schema
+        }
+        return cls.meta
 
     async def as_action_description(self):
         """
@@ -34,7 +51,7 @@ class Action:
         Returns a dictionary describing the action.
         """
         description = {
-            self.name: {
+            self.title: {
                 "href": self.href_prefix + self.href,
                 "timeRequested": self.time_requested,
                 "status": self.status,
@@ -42,10 +59,10 @@ class Action:
         }
 
         if self.input is not None:
-            description[self.name]["input"] = self.input
+            description[self.title]["input"] = self.input
 
         if self.time_completed is not None:
-            description[self.name]["timeCompleted"] = self.time_completed
+            description[self.title]["timeCompleted"] = self.time_completed
 
         return description
 
@@ -62,7 +79,7 @@ class Action:
 
     async def get_name(self):
         """Get this action's name."""
-        return self.name
+        return self.title
 
     async def get_href(self):
         """Get this action's href."""
@@ -111,9 +128,25 @@ class Action:
 
 
 class Rename(Action):
-    name = "rename"
+    title = "rename"
+    description = "test"
+
+    class Input(BaseModel):
+        title: str
 
     async def perform_action(self):
         tuple = await ThingModel.get_or_create(uid=self.thing.id, title=self.thing.title)
         thing = tuple[0]
         await ThingModel.filter(uid=thing.uid).update(title=self.input["title"])
+
+
+class Hello(Action):
+    title = "hello"
+    description = "ok"
+
+    class Input(BaseModel):
+        text: str
+
+    async def perform_action(self):
+        text = self.input["text"]
+        print(text)

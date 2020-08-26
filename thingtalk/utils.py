@@ -9,6 +9,20 @@ from contextlib import contextmanager
 from threading import Thread
 
 
+def get_ws_href(request):
+    scheme = 'wss' if request.url.scheme == 'https' else 'ws'
+    host = request.headers.get('Host', '')
+    href = f"{scheme}://{host}"
+    return href
+
+
+def get_http_href(request):
+    scheme = request.url.scheme
+    host = request.headers.get('Host', '')
+    href = f"{scheme}://{host}"
+    return href
+
+
 def timestamp():
     """
     Get the current time.

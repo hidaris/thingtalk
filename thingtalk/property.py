@@ -31,8 +31,8 @@ class Property:
 
         # Add the property change observer to notify the Thing about a property
         # change.
-        self.value.on("update", lambda _: self.thing.property_notify(self))
-        self.value.on("sync", lambda _: self.thing.property_notify(self))
+        self.value.on("update", lambda value_: self.thing.property_notify(self, value_))
+        self.value.on("sync", lambda value_: self.thing.property_notify(self, value_))
         self.value.on("update", lambda _: self.thing.property_action(self))
 
     async def validate_value(self, value):
@@ -68,28 +68,28 @@ class Property:
             )
         return description
 
-    async def set_href_prefix(self, prefix):
+    def set_href_prefix(self, prefix):
         """
         Set the prefix of any hrefs associated with this property.
         prefix -- the prefix
         """
         self.href_prefix = prefix
 
-    async def set_href(self, href):
+    def set_href(self, href):
         """
         Set the href associated with this property.
         href -- the new prefix
         """
         self.href = href
 
-    async def set_media_type(self, media_type):
+    def set_media_type(self, media_type):
         """
         Set the media type associated with this property.
         media_type -- the new media type
         """
         self.media_type = media_type
 
-    async def get_href(self):
+    def get_href(self):
         """
         Get the href of this property.
         Returns the href.
@@ -118,11 +118,11 @@ class Property:
         """
         return self.name
 
-    async def set_thing(self, thing):
+    def set_thing(self, thing):
         """Set the thing associated with this property."""
         self.thing = thing
 
-    async def get_thing(self):
+    def get_thing(self):
         """Get the thing associated with this property."""
         return self.thing
 
