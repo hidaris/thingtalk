@@ -7,7 +7,7 @@ from ..thing import Thing
 router = APIRouter()
 
 
-@router.get("/events", tags=["event"])
+@router.get("/events")
 async def get_events(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /events.
@@ -17,7 +17,7 @@ async def get_events(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     return UJSONResponse(await thing.get_event_descriptions())
 
 
-@router.get("/events/{event_name}", tags=["event"])
+@router.get("/events/{event_name}")
 async def get_event(event_name: str, thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /events/<event_name>.

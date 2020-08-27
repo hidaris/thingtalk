@@ -3,7 +3,6 @@ import re
 import socket
 import time
 from fastapi.testclient import TestClient
-# from thingtalk.app import app
 from example.test import app
 
 _TIME_REGEX = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
@@ -359,16 +358,17 @@ def test_actions():
 
 def test_websocket():
     # Test setting property through websocket
+    global ws_href
     if _AUTHORIZATION_HEADER is not None:
-        global ws_href
         ws_href += "?jwt=" + _AUTHORIZATION_HEADER.split(" ")[1]
-        print(ws_href)
+    ws_href += "/urn:dev:ops:my-lamp-1234"
     with client.websocket_connect(ws_href) as websocket:
+        websocket.receive_json(mode='binary')
         websocket.send_json({"messageType": "setProperty", "data": {"brightness": 10, }})
-        message = websocket.receive_json()
+        message = websocket.receive_json(mode='binary')
         assert message["messageType"] == "propertyStatus"
         assert message["data"]["brightness"] == 10
-        code, body = http_request("GET", "/properties/brightness")
+        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/properties/brightness")
         assert code == 200
         assert body["brightness"] == 10
 
@@ -382,8 +382,7 @@ def test_websocket():
 
         # Handle any extra propertyStatus message first
         while True:
-            message = websocket.receive_json()
-            print(message)
+            message = websocket.receive_json(mode='binary')
             if message["messageType"] == "propertyStatus":
                 continue
 
@@ -394,7 +393,7 @@ def test_websocket():
         assert message["data"]["fade"]["input"]["duration"] == 1000
         assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
         assert message["data"]["fade"]["status"] == "created"
-        message = websocket.receive_json()  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
@@ -405,7 +404,7 @@ def test_websocket():
         action_id = None
         received = [False, False]
         for _ in range(0, 2):
-            message = websocket.receive_json()  # json.loads(ws.recv())
+            message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 90
@@ -425,7 +424,7 @@ def test_websocket():
         for r in received:
             assert r
 
-        code, body = http_request("GET", "/actions")
+        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions")
         assert code == 200
         assert len(body) == 1
         assert len(body[0].keys()) == 1
@@ -436,15 +435,16 @@ def test_websocket():
         assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
         assert body[0]["fade"]["status"] == "completed"
 
-        code, body = http_request("GET", "/actions/fade/" + action_id)
+        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions/fade/" + action_id)
         assert code == 200
         assert len(body.keys()) == 1
+        assert body["fade"]["href"] == _PATH_PREFIX + "/actions/fade/" + action_id
         assert body["fade"]["href"] == _PATH_PREFIX + "/actions/fade/" + action_id
         assert re.match(_TIME_REGEX, body["fade"]["timeRequested"]) is not None
         assert re.match(_TIME_REGEX, body["fade"]["timeCompleted"]) is not None
         assert body["fade"]["status"] == "completed"
 
-        code, body = http_request("GET", "/events")
+        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/events")
         assert code == 200
         assert len(body) == 3
         assert len(body[2].keys()) == 1
@@ -461,14 +461,14 @@ def test_websocket():
                 "data": {"fade": {"input": {"brightness": 100, "duration": 500, }, }, },
             }
         )
-        message = websocket.receive_json()  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
         assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
         assert message["data"]["fade"]["status"] == "created"
         assert re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
-        message = websocket.receive_json()  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
@@ -479,7 +479,7 @@ def test_websocket():
         # These may come out of order
         received = [False, False, False]
         for _ in range(0, 3):
-            message = websocket.receive_json()  # json.loads(ws.recv())
+            message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 100
@@ -510,63 +510,3 @@ def test_websocket():
 
         for r in received:
             assert r
-
-#     if _DEBUG:
-#         orig_send = ws.send
-#         orig_recv = ws.recv
-#
-#         def send(msg):
-#             print("WS Send: {}".format(msg))
-#             return orig_send(msg)
-#
-#         def recv():
-#             msg = orig_recv()
-#             print("WS Recv: {}".format(msg))
-#             return msg
-#
-#         ws.send = send
-#         ws.recv = recv
-#
-#     ws.recv()
-#
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(description="Web Thing test client.")
-#     parser.add_argument(
-#         "--protocol",
-#         help="protocol, either http or https",
-#         choices=["http", "https"],
-#         default="http",
-#     )
-#     parser.add_argument(
-#         "--host", help="server hostname or IP address", default=get_ip()
-#     )
-#     parser.add_argument("--port", help="server port", type=int, default=8888)
-#     parser.add_argument(
-#         "--path-prefix", help="path prefix to get to thing description", default=""
-#     )
-#     parser.add_argument("--auth-header", help='authorization header, i.e. "Bearer ..."')
-#     parser.add_argument(
-#         "--skip-actions-events", help="skip action and event tests", action="store_true"
-#     )
-#     parser.add_argument(
-#         "--skip-websocket", help="skip WebSocket tests", action="store_true"
-#     )
-#     parser.add_argument("--debug", help="log all requests", action="store_true")
-#     args = parser.parse_args()
-#
-#     if (args.protocol == "http" and args.port == 80) or (
-#             args.protocol == "https" and args.port == 443
-#     ):
-#         _BASE_URL = args.host
-#     else:
-#         _BASE_URL = "{}:{}".format(args.host, args.port)
-#
-#     if args.debug:
-#         _DEBUG = True
-#
-#
-#     _PROTO = args.protocol
-#     _PATH_PREFIX = args.path_prefix
-#     _AUTHORIZATION_HEADER = args.auth_header
-#
-#     exit(run_client())

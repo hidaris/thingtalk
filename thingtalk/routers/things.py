@@ -11,7 +11,7 @@ from ..utils import get_http_href, get_ws_href
 router = APIRouter()
 
 
-@router.get("/things", tags=["thing"])
+@router.get("/things")
 async def get_things(request: Request) -> UJSONResponse:
     """
     Handle a request to / when the server manages multiple things.
@@ -41,7 +41,7 @@ async def get_things(request: Request) -> UJSONResponse:
     return UJSONResponse(descriptions)
 
 
-@router.get("/things/{thing_id}", tags=["thing"])
+@router.get("/things/{thing_id}")
 async def get_thing_by_id(request: Request, thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a GET request, including websocket requests.

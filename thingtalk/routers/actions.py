@@ -16,7 +16,7 @@ async def perform_action(action):
     await action.start()
 
 
-@router.get("/actions", tags=["action"])
+@router.get("/actions")
 async def get_actions(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions.
@@ -26,11 +26,9 @@ async def get_actions(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     return UJSONResponse(await thing.get_action_descriptions())
 
 
-@router.post("/actions", tags=["action"])
-async def revoke_actions(
-        message: typing.Dict[str, typing.Any],
-        thing: Thing = Depends(get_thing)
-) -> UJSONResponse:
+@router.post("/actions")
+async def revoke_actions(message: typing.Dict[str, typing.Any],
+                         thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a POST request.
     :param thing -- the thing this request is for
@@ -53,7 +51,7 @@ async def revoke_actions(
     return UJSONResponse(response, status_code=201)
 
 
-@router.get("/actions/{action_name}", tags=["action"])
+@router.get("/actions/{action_name}")
 async def get_action(action_name: str, thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions/<action_name>.
@@ -66,12 +64,10 @@ async def get_action(action_name: str, thing: Thing = Depends(get_thing)) -> UJS
     )
 
 
-@router.post("/actions/{action_name}", tags=["action"])
-async def invoke_action(
-        action_name: str,
-        message: typing.Dict[str, typing.Any],
-        thing: Thing = Depends(get_thing)
-) -> UJSONResponse:
+@router.post("/actions/{action_name}")
+async def invoke_action(action_name: str,
+                        message: typing.Dict[str, typing.Any],
+                        thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a POST request.
     :param thing -- the thing this request is for
@@ -98,8 +94,8 @@ async def invoke_action(
     return UJSONResponse(response, status_code=201)
 
 
-@router.get("/actions/{action_name}/{action_id}", tags=["action"])
-async def get_action_by_id(action_name: str, action_id: str, thing: Thing = Depends(get_thing)):
+@router.get("/actions/{action_name}/{action_id}")
+async def get_action_by_id(action_name: str, action_id: str, thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions/<action_name>/<action_id>.
     :param thing -- the thing this request is for
@@ -114,8 +110,8 @@ async def get_action_by_id(action_name: str, action_id: str, thing: Thing = Depe
     return UJSONResponse(await action.as_action_description())
 
 
-@router.put("/actions/{action_name}/{action_id}", tags=["action"])
-async def update_action_by_id(action_name: str, action_id: str, thing: Thing = Depends(get_thing)):
+@router.put("/actions/{action_name}/{action_id}")
+async def update_action_by_id(action_name: str, action_id: str, thing: Thing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a PUT request.
     TODO: this is not yet defined in the spec
@@ -127,10 +123,10 @@ async def update_action_by_id(action_name: str, action_id: str, thing: Thing = D
     return UJSONResponse({"msg": "success"}, status_code=200)
 
 
-@router.delete("/actions/{action_name}/{action_id}", tags=["action"])
+@router.delete("/actions/{action_name}/{action_id}")
 async def cancel_action_by_id(action_name: str,
                               action_id: str,
-                              thing: Thing = Depends(get_thing)) -> UJSONResponse:
+                              thing: Thing = Depends(get_thing)) -> Response:
     """
     Handle a DELETE request.
     :param thing -- the thing this request is for

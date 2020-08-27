@@ -2,14 +2,14 @@ import socket
 
 from zeroconf import ServiceInfo, Zeroconf
 
-from fastapi import FastAPI
-# from tortoise.contrib.fastapi import HTTPNotFoundError, register_tortoise
+from fastapi import FastAPI, APIRouter
 
 
 from loguru import logger
 
 from .thing import Server
 # from .auth import requires
+from .utils import get_ip
 from .containers import MultipleThings
 from .routers import things, properties, actions, events, websockets
 
@@ -36,6 +36,9 @@ app.state.things = MultipleThings({server.id: server}, "things")
 #     bus = app.state.bus
 #     await bus.clean_up()
 
+# zeroconf = Zeroconf()
+#
+#
 # @app.on_event("startup")
 # async def start_mdns():
 #     """Start listening for incoming connections."""
@@ -45,7 +48,7 @@ app.state.things = MultipleThings({server.id: server}, "things")
 #         f"{name}._webthing._tcp.local.",
 #     ]
 #     kwargs = {
-#         'port': '8000',# port,
+#         'port': '8000',  # port,
 #         'properties': {
 #             'path': '/',
 #         },
@@ -53,45 +56,38 @@ app.state.things = MultipleThings({server.id: server}, "things")
 #         'addresses': [socket.inet_aton(get_ip())]
 #     }
 #     app.state.service_info = ServiceInfo(*args, **kwargs)
-#     app.state.zeroconf = Zeroconf()
-#     app.state.zeroconf.register_service(app.state.service_info)
+#     print(app.state.service_info)
+#     zeroconf.register_service(app.state.service_info)
 #
 #
 # @app.on_event("shutdown")
 # async def stop_mdns():
 #     """Stop listening."""
-#     app.state.zeroconf.unregister_service(app.state.service_info)
-#     app.state.zeroconf.close()
+#     zeroconf.unregister_service(app.state.service_info)
+#     zeroconf.close()
 
+thing_router = APIRouter()
 
-app.include_router(things.router)
-app.include_router(websockets.router)
-app.include_router(
+thing_router.include_router(things.router, tags=["thing"])
+thing_router.include_router(websockets.router)
+thing_router.include_router(
     properties.router,
     prefix="/things/{thing_id}",
     tags=["property"],
     responses={404: {"description": "Not found"}},
 )
-app.include_router(
+thing_router.include_router(
     actions.router,
     prefix="/things/{thing_id}",
     tags=["action"],
     responses={404: {"description": "Not found"}},
 )
-app.include_router(
+thing_router.include_router(
     events.router,
     prefix="/things/{thing_id}",
     tags=["event"],
     responses={404: {"description": "Not found"}},
 )
-
-# register_tortoise(
-#     app,
-#     db_url="sqlite://:memory:",
-#     modules={'models': ['thingtalk.model']},
-#     generate_schemas=True,
-#     add_exception_handlers=True,
-# )
 
 # class WsThingHandler(WebSocketEndpoint):
 #     """Handle a request to /."""
