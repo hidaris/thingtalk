@@ -11,8 +11,6 @@ class Action:
     """An Action represents an individual action on a thing."""
 
     title = ""
-    description = ""
-    meta = {}
 
     def __init__(self, thing, input_, id_=uuid.uuid4().hex):
         """
@@ -31,19 +29,6 @@ class Action:
         self.time_requested = timestamp()
         self.time_completed = None
         self.meta = None
-
-    @classmethod
-    def get_meta(cls):
-        assert hasattr(cls, 'Input'), (
-            f"Class {cls.__name__} missing 'Input' attribute"
-        )
-        schema = cls.Input.schema()
-        cls.meta = {
-            "title": cls.title,
-            "description": cls.description,
-            "input": schema
-        }
-        return cls.meta
 
     async def as_action_description(self):
         """
@@ -66,7 +51,7 @@ class Action:
 
         return description
 
-    async def set_href_prefix(self, prefix):
+    def set_href_prefix(self, prefix):
         """
         Set the prefix of any hrefs associated with this action.
         prefix -- the prefix
@@ -142,10 +127,6 @@ class Rename(Action):
 
 class Hello(Action):
     title = "hello"
-    description = "ok"
-
-    class Input(BaseModel):
-        text: str
 
     async def perform_action(self):
         text = self.input["text"]

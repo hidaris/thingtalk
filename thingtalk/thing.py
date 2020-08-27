@@ -37,7 +37,8 @@ class Thing:
 
         self._type = self._type.union(set(self.type))
 
-        self.description = description_
+        if not self.description:
+            self.description = description_
 
         self.id = id_
         self.context = "https://iot.mozilla.org/schemas"
@@ -51,10 +52,10 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
-        self.add_available_action(
-            Rename
-        )
-        self.add_available_action(Hello)
+        # self.add_available_action(
+        #     Rename
+        # )
+        # self.add_available_action(Hello)
         # {
         #     "title": "rename",
         #     "description": "rename the thing's title",
@@ -94,6 +95,7 @@ class Thing:
 
         for name, action in self.available_actions.items():
             thing["actions"][name] = action["metadata"]
+            print(thing["actions"][name])
             thing["actions"][name]["links"] = [
                 {"rel": "action", "href": f"{self.href_prefix}/actions/{name}", },
             ]
@@ -130,7 +132,7 @@ class Thing:
         """Get the UI href."""
         return self.ui_href
 
-    async def set_href_prefix(self, prefix):
+    def set_href_prefix(self, prefix):
         """
         Set the prefix of any hrefs associated with this thing.
         prefix -- the prefix
@@ -142,7 +144,7 @@ class Thing:
 
         for action_name in self.actions.keys():
             for action in self.actions[action_name]:
-                await action.set_href_prefix(prefix)
+                action.set_href_prefix(prefix)
 
     async def set_ui_href(self, href):
         """
@@ -374,7 +376,7 @@ class Thing:
                 return None
 
         action = action_type["class"](self, input_=input_)
-        await action.set_href_prefix(self.href_prefix)
+        action.set_href_prefix(self.href_prefix)
         await self.action_notify(action)
         self.actions[action_name].append(action)
         return action
@@ -402,7 +404,8 @@ class Thing:
         cls -- class to instantiate for this action
         """
         if metadata is None:
-            metadata = cls.get_meta()
+            metadata = cls.schema
+            print(metadata)
             # metadata = {}
 
         name = cls.__name__.lower()
