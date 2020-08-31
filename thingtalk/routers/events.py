@@ -2,7 +2,7 @@ from fastapi import Depends, APIRouter
 from fastapi.responses import UJSONResponse
 
 from ..dependencies import get_thing
-from ..thing import Thing
+from ..models.thing import Thing
 
 router = APIRouter()
 

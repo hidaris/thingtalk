@@ -1,7 +1,5 @@
-from starlette.middleware import Middleware
-
-from thingtalk import Value, Thing, Property, Event, Action
-from thingtalk.app import app
+from ..thingtalk import Value, Thing, Property, Event, Action
+from ..thingtalk.app import app
 
 # import logging
 import time
@@ -9,6 +7,11 @@ import time
 
 class OverheatedEvent(Event):
     title = "overheated"
+    schema = {
+        "description": "The lamp has exceeded its safe operating temperature",
+        "type": "number",
+        "unit": "degree celsius",
+    }
 
 
 class Fade(Action):
@@ -81,16 +84,11 @@ class Light(Thing):
         )
 
         self.add_available_action(
-            Fade,
+            Fade
         )
 
         self.add_available_event(
-            OverheatedEvent,
-            {
-                "description": "The lamp has exceeded its safe operating temperature",
-                "type": "number",
-                "unit": "degree celsius",
-            },
+            OverheatedEvent
         )
 
 

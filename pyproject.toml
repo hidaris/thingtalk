@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "thingtalk"
+version = "0.2.3"
+description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
+authors = ["hidaris <zuocool@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/hidaris/thingtalk"
+repository = "https://github.com/hidaris/thingtalk"
+documentation = "https://github.com/hidaris/thingtalk/blob/master/README.md"
+
+license = "MPL-2.0"
+
+keywords = ["web-of-things", "webthing", "iot"]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/hidaris/thingtalk/issues"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+fastapi = "^0.61.1"
+uvicorn = "^0.11.8"
+ujson = "^3.1.0"
+email_validator = "^1.1.1"
+httpx = "^0.14.2"
+pyee = "^7.0.2"
+jsonschema = "^3.2.0"
+ifaddr = "^0.1.7"
+zeroconf = "^0.28.2"
+loguru = "^0.5.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.0"
+requests = "^2.24.0"

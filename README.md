@@ -1,10 +1,12 @@
-# aiowebthing
+<h1 align="center">Project ThingTalk</h1>
 
-[![pypi-v](https://img.shields.io/pypi/v/aiowebthing.svg)](https://pypi.python.org/pypi/aiowebthing)
-[![python](https://img.shields.io/pypi/pyversions/aiowebthing.svg)](https://github.com/hidaris/aiowebthing)
+<h2 align="center">Thing as a Service</h2>
 
-## What is `aiowebthing` ?
-`aiowebthing` is a library for the Web of Things protocol in Python Asyncio. This library is derived of webthing-python project (supporting Tornado) but adapted for Starlette (based on Uvicorn for better performance).
+[![pypi-v](https://img.shields.io/pypi/v/thingtalk.svg)](https://pypi.python.org/pypi/thingtalk)
+[![python](https://img.shields.io/pypi/pyversions/thingtalk.svg)](https://github.com/hidaris/thingtalk)
+
+## What is `thingtalk` ?
+`thingtalk` is a library for the Web of Things protocol in Python Asyncio. This library is derived of webthing-python project (supporting Tornado) but adapted for fastapi (based on Uvicorn for better performance).
 
 ### additional features
 1. additional_routes -- list of additional routes add to the server
@@ -25,13 +27,13 @@ self.value.on("update", lambda _: self.thing.property_action(self))
 
 
 ## Installation
-aiowebthing can be installed via pip, as such:
+thingtalk can be installed via pip, as such:
 
-`$ pip install aiowebthing`
+`$ pip install thingtalk`
 
 ## Running the Sample
 `$ wget
-https://raw.githubusercontent.com/hidaris/aiowebthing/master/example/test.py`
+https://raw.githubusercontent.com/hidaris/thingtalk/master/example/test.py`
 
 `$ uvicorn test:app --reload`
 
@@ -52,7 +54,7 @@ Setting this property via a PUT call to the REST API sets the brightness level o
 First we create a new Thing:
 
 ``` python
-from webthing import Thing, Property, Value
+from thingtalk import Thing, Property, Value
 
 
 class Light(Thing):

@@ -1,15 +1,13 @@
 """High-level Event base class implementation."""
-import typing
 
-from .utils import timestamp
-from .schema import BaseModel
+from ..utils import timestamp
 
 
 class Event:
     """An Event represents an individual event from a thing."""
 
     title = None
-    description = None
+    schema = {}
 
     def __init__(self, data=None):
         """
@@ -21,15 +19,6 @@ class Event:
         self.thing = None
         self.data = data
         self.time = timestamp()
-
-    @classmethod
-    def get_meta(cls):
-        assert hasattr(cls, 'Schema'), (
-            f"Class {cls.__name__} missing 'Schema' attribute"
-        )
-        schema = cls.Schema.schema()
-        schema["description"] = cls.description
-        return schema
 
     async def as_event_description(self):
         """
@@ -68,25 +57,47 @@ class Event:
 
 class ThingPairingEvent(Event):
     title = "thing_pairing"
-    description = "new thing pairing"
-
-    class Schema(BaseModel):
-        id: str
+    schema = {
+        "description": "thing pairing event",
+        "type": "object",
+        "required": ["id", ],
+        "properties": {
+            "id": {
+                "type": "string",
+            },
+        },
+    }
 
 
 class ThingPairedEvent(Event):
     title = "thing_paired"
-    description = "new thing paired"
-
-    class Schema(BaseModel):
-        id: str
-        type: typing.List[str]
-        title: str
+    schema = {
+        "description": "new thing paired",
+        "type": "object",
+        "required": ["@type", "id", "title"],
+        "properties": {
+            "@type": {
+                "type": "array",
+            },
+            "id": {
+                "type": "string",
+            },
+            "title": {
+                "type": "string",
+            },
+        },
+    }
 
 
 class ThingRemovedEvent(Event):
     title = "thing_removed"
-    description = "thing removed"
-
-    class Schema(BaseModel):
-        id: str
+    schema = {
+        "description": "device removed event",
+        "type": "object",
+        "required": ["id", ],
+        "properties": {
+            "id": {
+                "type": "string",
+            },
+        },
+    }

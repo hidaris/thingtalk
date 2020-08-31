@@ -5,9 +5,8 @@ from jsonschema.exceptions import ValidationError
 
 from websockets import ConnectionClosedOK
 from starlette.websockets import WebSocketDisconnect
+from loguru import logger
 
-# from .model import Thing as ThingModel
-from .action import Rename, Hello
 from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
 from .value import Value
 from .property import Property
@@ -52,32 +51,12 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
-        # self.add_available_action(
-        #     Rename
-        # )
-        # self.add_available_action(Hello)
-        # {
-        #     "title": "rename",
-        #     "description": "rename the thing's title",
-        #     "input": {
-        #         "type": "object",
-        #         "required": ["title", ],
-        #         "properties": {
-        #             "title": {
-        #                 "type": "string",
-        #             },
-        #         },
-        #     },
-        # },
 
     async def as_thing_description(self):
         """
         Return the thing state as a Thing Description.
         Returns the state as a dictionary.
         """
-        # maybe_thing = await ThingModel.get_or_none(uid=self.id)
-        # if maybe_thing:
-        #     self.title = maybe_thing.title
 
         thing = {
             "id": self.id,
@@ -295,10 +274,9 @@ class Thing:
         prop = await self.find_property(property_name)
         if not prop:
             return
-        print(f"set {self.id}'s property {property_name} to {value}")
+        logger.info(f"set {self.id}'s property {property_name} to {value}")
         try:
             await prop.set_value(value)
-            # await self.property_notify(property_name, value)
         except PropertyError as e:
             await self.error_notify(e)
 
@@ -311,7 +289,7 @@ class Thing:
         prop = await self.find_property(property_name)
         if not prop:
             return
-        print(f"sync {self.title}'s property {property_name} to {value}")
+        logger.info(f"sync {self.title}'s property {property_name} to {value}")
         try:
             await prop.set_value(value, with_action=False)
         except PropertyError as e:
@@ -349,13 +327,20 @@ class Thing:
         metadata -- event metadata, i.e. type, description, etc., as a dict
         """
         if metadata is None:
-            metadata = cls.get_meta()
-            # metadata = {}
+            metadata = cls.schema
 
         self.available_events[cls.title] = {
             "metadata": metadata,
             "subscribers": {},
         }
+
+    def add_available_events(self, evts):
+        """
+        Add list of available event.
+        evts -- list of the event
+        """
+        for evt in evts:
+            self.add_available_event(evt)
 
     async def perform_action(self, action_name, input_=None):
         """
@@ -561,6 +546,6 @@ class Server(Thing):
             )
         )
 
-        self.add_available_event(ThingPairedEvent)
-        self.add_available_event(ThingPairingEvent)
-        self.add_available_event(ThingRemovedEvent)
+        self.add_available_events([
+            ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
+        ])

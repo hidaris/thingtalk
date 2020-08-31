@@ -1,13 +1,12 @@
 import asyncio
 
-from websockets import ConnectionClosedOK
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from ..dependencies import on_connect
-from ..thing import Thing
+from ..models.thing import Thing
 
 
 async def perform_action(action):

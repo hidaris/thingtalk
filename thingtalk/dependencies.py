@@ -1,5 +1,6 @@
 from fastapi.exceptions import HTTPException
 from fastapi import Request, Depends, WebSocket
+from loguru import logger
 
 
 async def get_thing(request: Request, thing_id: str):
@@ -16,10 +17,6 @@ async def get_thing(request: Request, thing_id: str):
     return thing
 
 
-async def get_bus(request: Request):
-    return request.app.state.bus
-
-
 async def on_connect(websocket: WebSocket, thing_id: str):
     """
     Get the thing this request is for.
@@ -28,7 +25,7 @@ async def on_connect(websocket: WebSocket, thing_id: str):
     Returns the thing, or None if not found.
     """
     await websocket.accept()
-    print(f"{websocket.url} connected")
+    logger.info(f"{websocket.url} connected")
 
     things = websocket.app.state.things
     thing = await things.get_thing(thing_id)

@@ -2,15 +2,15 @@
 
 import uuid
 
-from .utils import timestamp
-from .model import Thing as ThingModel
-from .schema import BaseModel
+from ..utils import timestamp
+# from .model import Thing as ThingModel
 
 
 class Action:
     """An Action represents an individual action on a thing."""
 
-    title = ""
+    title: str = ""
+    schema: dict = {}
 
     def __init__(self, thing, input_, id_=uuid.uuid4().hex):
         """
@@ -110,24 +110,3 @@ class Action:
         self.status = "completed"
         self.time_completed = timestamp()
         await self.thing.action_notify(self)
-
-
-class Rename(Action):
-    title = "rename"
-    description = "test"
-
-    class Input(BaseModel):
-        title: str
-
-    async def perform_action(self):
-        tuple = await ThingModel.get_or_create(uid=self.thing.id, title=self.thing.title)
-        thing = tuple[0]
-        await ThingModel.filter(uid=thing.uid).update(title=self.input["title"])
-
-
-class Hello(Action):
-    title = "hello"
-
-    async def perform_action(self):
-        text = self.input["text"]
-        print(text)
