@@ -14,6 +14,7 @@ app = FastAPI(
     description="Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 )
 server = Server()
+server.set_href_prefix(f"/things/{server.id}")
 app.state.things = MultipleThings({server.id: server}, "things")
 
 # zeroconf = Zeroconf()

@@ -8,7 +8,7 @@ from ..example.test import app
 _TIME_REGEX = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
 _PROTO = "http"
 _BASE_URL = "localhost:8000"
-_PATH_PREFIX = "/things"
+_PATH_PREFIX = "/things/urn:dev:ops:my-lamp-1234"
 _AUTHORIZATION_HEADER = None
 _DEBUG = False
 _SKIP_ACTIONS_EVENTS = False
@@ -97,7 +97,6 @@ def http_request(method, path, data=None):
 def test_thing_description():
     # Test thing description
     code, body = http_request("get", "/")
-    body = body[1]
     assert code == 200
     assert body["id"] == "urn:dev:ops:my-lamp-1234"
     assert body["title"] == "My Lamp"
@@ -226,41 +225,41 @@ def lists_equal(a, b):
 
 def test_properties():
     # Test properties
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/properties")
+    code, body = http_request("GET", "/properties")
     assert code == 200
     assert body["brightness"] == 50
     assert body["on"]
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/properties/brightness")
+    code, body = http_request("GET", "/properties/brightness")
     assert code == 200
     assert body["brightness"] == 50
 
-    code, body = http_request("PUT", "/urn:dev:ops:my-lamp-1234/properties/brightness", {"brightness": 25})
+    code, body = http_request("PUT", "/properties/brightness", {"brightness": 25})
 
     assert code == 200
     assert body["brightness"] == 25
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/properties/brightness")
+    code, body = http_request("GET", "/properties/brightness")
     assert code == 200
     assert body["brightness"] == 25
 
 
 def test_events():
     # Test events
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/events")
+    code, body = http_request("GET", "/events")
     assert code == 200
     assert len(body) == 0
 
 
 def test_actions():
     # Test actions
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions")
+    code, body = http_request("GET", "/actions")
     assert code == 200
     assert len(body) == 0
 
     code, body = http_request(
         "POST",
-        "/urn:dev:ops:my-lamp-1234/actions",
+        "/actions",
         {"fade": {"input": {"brightness": 50, "duration": 2000, }, }, },
     )
     assert code == 201
@@ -273,7 +272,7 @@ def test_actions():
     # Wait for the action to complete
     time.sleep(2.5)
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions")
+    code, body = http_request("GET", "/actions")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
@@ -284,7 +283,7 @@ def test_actions():
     assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
     assert body[0]["fade"]["status"] == "completed"
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions/fade")
+    code, body = http_request("GET", "/actions/fade")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
@@ -295,19 +294,19 @@ def test_actions():
     assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
     assert body[0]["fade"]["status"] == "completed"
 
-    code, body = http_request("DELETE", "/urn:dev:ops:my-lamp-1234/actions/fade/" + action_id)
+    code, body = http_request("DELETE", "/actions/fade/" + action_id)
     assert code == 204
     assert body is None
 
     # The action above generates an event, so check it.
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/events")
+    code, body = http_request("GET", "/events")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
     assert body[0]["overheated"]["data"] == 102
     assert re.match(_TIME_REGEX, body[0]["overheated"]["timestamp"]) is not None
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/events/overheated")
+    code, body = http_request("GET", "/events/overheated")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
@@ -316,7 +315,7 @@ def test_actions():
 
     code, body = http_request(
         "POST",
-        "/urn:dev:ops:my-lamp-1234/actions/fade",
+        "/actions/fade",
         {"fade": {"input": {"brightness": 50, "duration": 2000, }, }, },
     )
     assert code == 201
@@ -329,7 +328,7 @@ def test_actions():
     # Wait for the action to complete
     time.sleep(2.5)
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions")
+    code, body = http_request("GET", "/actions")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
@@ -340,7 +339,7 @@ def test_actions():
     assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
     assert body[0]["fade"]["status"] == "completed"
 
-    code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions/fade")
+    code, body = http_request("GET", "/actions/fade")
     assert code == 200
     assert len(body) == 1
     assert len(body[0].keys()) == 1
@@ -351,7 +350,7 @@ def test_actions():
     assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
     assert body[0]["fade"]["status"] == "completed"
 
-    code, body = http_request("DELETE", "/urn:dev:ops:my-lamp-1234/actions/fade/" + action_id)
+    code, body = http_request("DELETE", "/actions/fade/" + action_id)
     assert code == 204
     assert body is None
 
@@ -361,14 +360,13 @@ def test_websocket():
     global ws_href
     if _AUTHORIZATION_HEADER is not None:
         ws_href += "?jwt=" + _AUTHORIZATION_HEADER.split(" ")[1]
-    ws_href += "/urn:dev:ops:my-lamp-1234"
     with client.websocket_connect(ws_href) as websocket:
         websocket.receive_json(mode='binary')
         websocket.send_json({"messageType": "setProperty", "data": {"brightness": 10, }})
         message = websocket.receive_json(mode='binary')
         assert message["messageType"] == "propertyStatus"
         assert message["data"]["brightness"] == 10
-        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/properties/brightness")
+        code, body = http_request("GET", "/properties/brightness")
         assert code == 200
         assert body["brightness"] == 10
 
@@ -393,7 +391,7 @@ def test_websocket():
         assert message["data"]["fade"]["input"]["duration"] == 1000
         assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
         assert message["data"]["fade"]["status"] == "created"
-        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
@@ -404,7 +402,7 @@ def test_websocket():
         action_id = None
         received = [False, False]
         for _ in range(0, 2):
-            message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
+            message = websocket.receive_json(mode='binary')
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 90
@@ -424,7 +422,7 @@ def test_websocket():
         for r in received:
             assert r
 
-        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions")
+        code, body = http_request("GET", "/actions")
         assert code == 200
         assert len(body) == 1
         assert len(body[0].keys()) == 1
@@ -435,7 +433,7 @@ def test_websocket():
         assert re.match(_TIME_REGEX, body[0]["fade"]["timeCompleted"]) is not None
         assert body[0]["fade"]["status"] == "completed"
 
-        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/actions/fade/" + action_id)
+        code, body = http_request("GET", "/actions/fade/" + action_id)
         assert code == 200
         assert len(body.keys()) == 1
         assert body["fade"]["href"] == _PATH_PREFIX + "/actions/fade/" + action_id
@@ -444,7 +442,7 @@ def test_websocket():
         assert re.match(_TIME_REGEX, body["fade"]["timeCompleted"]) is not None
         assert body["fade"]["status"] == "completed"
 
-        code, body = http_request("GET", "/urn:dev:ops:my-lamp-1234/events")
+        code, body = http_request("GET", "/events")
         assert code == 200
         assert len(body) == 3
         assert len(body[2].keys()) == 1
@@ -461,14 +459,14 @@ def test_websocket():
                 "data": {"fade": {"input": {"brightness": 100, "duration": 500, }, }, },
             }
         )
-        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
         assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
         assert message["data"]["fade"]["status"] == "created"
         assert re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
-        message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
+        message = websocket.receive_json(mode='binary')
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
@@ -479,7 +477,7 @@ def test_websocket():
         # These may come out of order
         received = [False, False, False]
         for _ in range(0, 3):
-            message = websocket.receive_json(mode='binary')  # json.loads(ws.recv())
+            message = websocket.receive_json(mode='binary')
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 100

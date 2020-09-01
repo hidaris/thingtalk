@@ -1,7 +1,6 @@
 from ..thingtalk import Value, Thing, Property, Event, Action
 from ..thingtalk.app import app
 
-# import logging
 import time
 
 
@@ -93,5 +92,5 @@ class Light(Thing):
 
 
 light = Light()
-light.set_href_prefix("/things")
+light.set_href_prefix(f"/things/{light.id}")
 app.state.things.things.update({light.id: light})

@@ -74,13 +74,11 @@ class Thing:
 
         for name, action in self.available_actions.items():
             thing["actions"][name] = action["metadata"]
-            print(thing["actions"][name])
             thing["actions"][name]["links"] = [
                 {"rel": "action", "href": f"{self.href_prefix}/actions/{name}", },
             ]
 
         for name, event in self.available_events.items():
-            print(event["metadata"])
             thing["events"][name] = event["metadata"]
 
             thing["events"][name]["links"] = [
@@ -278,6 +276,7 @@ class Thing:
         try:
             await prop.set_value(value)
         except PropertyError as e:
+            logger.error(f"bad property value {e}")
             await self.error_notify(e)
 
     async def sync_property(self, property_name, value):
@@ -293,6 +292,7 @@ class Thing:
         try:
             await prop.set_value(value, with_action=False)
         except PropertyError as e:
+            logger.error(f"bad property value {e}")
             await self.error_notify(e)
 
     async def get_action(self, action_name, action_id):
@@ -390,8 +390,6 @@ class Thing:
         """
         if metadata is None:
             metadata = cls.schema
-            print(metadata)
-            # metadata = {}
 
         name = cls.__name__.lower()
         self.available_actions[name] = {

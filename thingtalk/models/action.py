@@ -3,7 +3,6 @@
 import uuid
 
 from ..utils import timestamp
-# from .model import Thing as ThingModel
 
 
 class Action:

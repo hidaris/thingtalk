@@ -3,6 +3,7 @@
 from copy import deepcopy
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
+from loguru import logger
 
 from .errors import PropertyError
 
@@ -41,11 +42,13 @@ class Property:
         value -- New value
         """
         if "readOnly" in self.metadata and self.metadata["readOnly"]:
+            logger.error("Read-only property")
             raise PropertyError("Read-only property")
 
         try:
             validate(value, self.metadata)
         except ValidationError:
+            logger.error(f"Invalid property value {value}")
             raise PropertyError("Invalid property value")
 
     async def as_property_description(self):
