@@ -1,8 +1,11 @@
+import copy
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.requests import Request
-
 from fastapi.responses import UJSONResponse
+
+from loguru import logger
 
 from ..dependencies import get_thing
 from ..models.thing import Thing
@@ -21,7 +24,8 @@ async def get_things(request: Request) -> UJSONResponse:
     """
     things = request.app.state.things
 
-    async def get_description(thing):
+    descriptions = []
+    for idx, thing in await things.get_things():
         description = await thing.as_thing_description()
         description["href"] = await thing.get_href()
         description["links"].append({
@@ -34,9 +38,9 @@ async def get_things(request: Request) -> UJSONResponse:
             "nosec_sc": {"scheme": "nosec", },
         }
         description["security"] = "nosec_sc"
-        return description
 
-    descriptions = [await get_description(thing) for _, thing in await things.get_things()]
+        bak = copy.deepcopy(description)
+        descriptions.append(bak)
 
     return UJSONResponse(descriptions)
 
