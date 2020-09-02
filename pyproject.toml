@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thingtalk"
-version = "0.2.5"
+version = "0.2.6"
 description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 authors = ["hidaris <zuocool@gmail.com>"]
 readme = "README.md"
@@ -24,7 +24,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/hidaris/thingtalk/issues"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 fastapi = "^0.61.1"
 uvicorn = "^0.11.8"
 ujson = "^3.1.0"
