@@ -6,7 +6,7 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from ..dependencies import on_connect
-from ..models.thing import Thing
+# from ..models.thing import Thing
 
 
 async def perform_action(action):
@@ -18,7 +18,13 @@ router = APIRouter()
 
 
 @router.websocket("/things/{thing_id}")
-async def websocket_endpoint(websocket: WebSocket, thing: Thing = Depends(on_connect)):
+async def websocket_endpoint(
+        websocket: WebSocket,
+        thing_and_subscriber=Depends(on_connect)):
+
+    thing, subscriber = thing_and_subscriber
+    if not thing:
+        return
     try:
         while True:
             logger.info("wait for message")
@@ -88,5 +94,4 @@ async def websocket_endpoint(websocket: WebSocket, thing: Thing = Depends(on_con
 
     except WebSocketDisconnect as e:
         logger.info(f"websocket was closed with code {e}")
-        if thing:
-            await thing.remove_subscriber(websocket)
+        await thing.remove_subscriber(subscriber)

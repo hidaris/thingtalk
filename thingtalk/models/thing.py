@@ -404,6 +404,7 @@ class Thing:
         ws -- the websocket
         """
         if id(ws) not in self.subscribers:
+            logger.info(f"subscriber {ws.active_connection.url} added")
             self.subscribers[id(ws)] = ws
 
     async def remove_subscriber(self, ws):
@@ -412,6 +413,7 @@ class Thing:
         ws -- the websocket
         """
         if id(ws) in self.subscribers:
+            logger.info(f"subscriber {ws.active_connection.url} poped")
             self.subscribers.pop(id(ws))
 
         for name in self.available_events:
@@ -444,26 +446,16 @@ class Thing:
         Notify all subscribers of a property change.
         property_ -- the property that changed
         """
-        message = {
-            "messageType": "propertyStatus",
-            "data": {property_.name: value_, },
-        }
-
         for subscriber in list(self.subscribers.values()):
-            await subscriber.send_json(message, mode="binary")
+            await subscriber.update_property(property_, value_)
 
     async def error_notify(self, error_):
         """
         Notify all subscribers of a error.
         error_ -- the error that reported
         """
-        message = {
-            "messageType": "error",
-            "data": {"status": "400 Bad Request", "message": str(error_), },
-        }
-
         for subscriber in list(self.subscribers.values()):
-            await subscriber.send_json(message, mode="binary")
+            await subscriber.update_error(error_)
 
     async def property_action(self, property_):
         """
@@ -477,16 +469,8 @@ class Thing:
         Notify all subscribers of an action status change.
         action -- the action whose status changed
         """
-        message = {
-            "messageType": "actionStatus",
-            "data": await action.as_action_description(),
-        }
-
         for subscriber in list(self.subscribers.values()):
-            try:
-                await subscriber.send_json(message, mode="binary")
-            except (WebSocketDisconnect, ConnectionClosedOK):
-                pass
+            await subscriber.update_action(action)
 
     async def event_notify(self, event):
         """
@@ -497,16 +481,8 @@ class Thing:
         if event.title not in self.available_events:
             return
 
-        message = {
-            "messageType": "event",
-            "data": await event.as_event_description(),
-        }
-
         for subscriber in list(self.available_events[event.title]["subscribers"].values()):
-            try:
-                await subscriber.send_json(message, mode="binary")
-            except (WebSocketDisconnect, ConnectionClosedOK):
-                pass
+            await subscriber.send_json(event)
 
     async def add_owner(self, owner: str):
         """

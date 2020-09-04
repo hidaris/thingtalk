@@ -2,6 +2,8 @@ from fastapi.exceptions import HTTPException
 from fastapi import Request, Depends, WebSocket
 from loguru import logger
 
+from .subscriber import Subscriber
+
 
 async def get_thing(request: Request, thing_id: str):
     """
@@ -41,8 +43,10 @@ async def on_connect(websocket: WebSocket, thing_id: str):
             },
             mode="binary",
         )
+        return None
     else:
-        await thing.add_subscriber(websocket)
+        subscriber = Subscriber(websocket)
+        await thing.add_subscriber(subscriber)
         ws_href = f"{websocket.url.scheme}://{websocket.headers.get('Host', '')}"
 
         description = await thing.as_thing_description()
@@ -57,8 +61,7 @@ async def on_connect(websocket: WebSocket, thing_id: str):
         description["security"] = "nosec_sc"
 
         await websocket.send_json(description, mode="binary")
-
-    return thing
+        return thing, subscriber
 
 
 async def check_property_and_get_thing(property_name: str, thing=Depends(get_thing)):
