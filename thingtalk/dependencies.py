@@ -43,7 +43,7 @@ async def on_connect(websocket: WebSocket, thing_id: str):
             },
             mode="binary",
         )
-        return None
+        return None, None
     else:
         subscriber = Subscriber(websocket)
         await thing.add_subscriber(subscriber)
@@ -60,7 +60,7 @@ async def on_connect(websocket: WebSocket, thing_id: str):
         }
         description["security"] = "nosec_sc"
 
-        await websocket.send_json(description, mode="binary")
+        await subscriber.send_json(description)
         return thing, subscriber
 
 

@@ -1,6 +1,7 @@
 """High-level Subscriber base class implementation."""
 
 from fastapi.websockets import WebSocket, WebSocketDisconnect
+from websockets import ConnectionClosedOK
 
 
 class Subscriber:
@@ -60,5 +61,5 @@ class Subscriber:
     async def send_json(self, message):
         try:
             await self.active_connection.send_json(message, mode="binary")
-        except WebSocketDisconnect:
+        except (WebSocketDisconnect, ConnectionClosedOK):
             pass

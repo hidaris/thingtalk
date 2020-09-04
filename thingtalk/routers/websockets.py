@@ -6,6 +6,8 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from ..dependencies import on_connect
+
+
 # from ..models.thing import Thing
 
 
@@ -21,7 +23,6 @@ router = APIRouter()
 async def websocket_endpoint(
         websocket: WebSocket,
         thing_and_subscriber=Depends(on_connect)):
-
     thing, subscriber = thing_and_subscriber
     if not thing:
         return
