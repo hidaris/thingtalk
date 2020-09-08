@@ -3,6 +3,7 @@ import asyncio
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.websockets import WebSocket, WebSocketDisconnect
+from websockets import ConnectionClosedOK
 from loguru import logger
 
 from ..dependencies import on_connect
@@ -93,6 +94,6 @@ async def websocket_endpoint(
                     mode="binary",
                 )
 
-    except WebSocketDisconnect as e:
+    except (WebSocketDisconnect, ConnectionClosedOK) as e:
         logger.info(f"websocket was closed with code {e}")
         await thing.remove_subscriber(subscriber)

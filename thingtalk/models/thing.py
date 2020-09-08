@@ -3,8 +3,6 @@
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
-from websockets import ConnectionClosedOK
-from starlette.websockets import WebSocketDisconnect
 from loguru import logger
 
 from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
