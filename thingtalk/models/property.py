@@ -49,7 +49,7 @@ class Property:
             validate(value, self.metadata)
         except ValidationError:
             logger.error(f"Invalid property value {value}")
-            raise PropertyError("Invalid property value")
+            raise PropertyError(f"Invalid property value {value}")
 
     async def as_property_description(self):
         """

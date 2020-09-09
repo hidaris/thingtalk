@@ -23,16 +23,19 @@ router = APIRouter()
 @router.websocket("/things/{thing_id}")
 async def websocket_endpoint(
         websocket: WebSocket,
+        thing_id: str,
         thing_and_subscriber=Depends(on_connect)):
     thing, subscriber = thing_and_subscriber
     if not thing:
+        logger.info(f"thing {thing_id} not found, close websocket")
+        await websocket.close(1000)
         return
     try:
         while True:
-            logger.info("wait for message")
             message = await websocket.receive_json()
             logger.info(f"/things/{thing.id} receive message {message}")
-            if "messageType" not in message or "data" not in message:
+            msg_type = message.get("messageType", None)
+            if not msg_type or "data" not in message:
                 await websocket.send_json(
                     {
                         "messageType": "error",
@@ -43,12 +46,8 @@ async def websocket_endpoint(
                     },
                     mode="binary",
                 )
-                logger.info("close websocket")
-                await websocket.close(1000)
-                return
 
-            msg_type = message["messageType"]
-            if msg_type == "setProperty":
+            elif msg_type == "setProperty":
                 for property_name, property_value in message["data"].items():
                     await thing.set_property(property_name, property_value)
 

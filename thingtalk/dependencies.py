@@ -27,7 +27,7 @@ async def on_connect(websocket: WebSocket, thing_id: str):
     Returns the thing, or None if not found.
     """
     await websocket.accept()
-    logger.info(f"{websocket.url} connected")
+    logger.info(f"{websocket.url} connected, ip {websocket.client.host}")
 
     things = websocket.app.state.things
     thing = await things.get_thing(thing_id)
