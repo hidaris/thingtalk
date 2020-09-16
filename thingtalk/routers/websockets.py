@@ -79,7 +79,7 @@ async def websocket_endpoint(
 
             elif msg_type == "addEventSubscription":
                 for event_name in message["data"].keys():
-                    await thing.add_event_subscriber(event_name, websocket)
+                    await thing.add_event_subscriber(event_name, subscriber)
             else:
                 await websocket.send_json(
                     {

@@ -480,7 +480,7 @@ class Thing:
             return
 
         for subscriber in list(self.available_events[event.title]["subscribers"].values()):
-            await subscriber.send_json(event)
+            await subscriber.update_event(event)
 
     async def add_owner(self, owner: str):
         """

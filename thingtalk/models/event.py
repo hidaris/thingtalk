@@ -69,6 +69,20 @@ class ThingPairingEvent(Event):
     }
 
 
+class ThingPairFailedEvent(Event):
+    title = "thing_pair_failed"
+    schema = {
+        "description": "thing pair failed event",
+        "type": "object",
+        "required": ["id", ],
+        "properties": {
+            "id": {
+                "type": "string",
+            },
+        },
+    }
+
+
 class ThingPairedEvent(Event):
     title = "thing_paired"
     schema = {
