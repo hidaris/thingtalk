@@ -1,5 +1,7 @@
 """High-level Thing base class implementation."""
 
+import asyncio
+
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
@@ -9,6 +11,13 @@ from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
 from .value import Value
 from .property import Property
 from .errors import PropertyError
+
+from ..dependencies import ee
+
+
+async def perform_action(action):
+    """Perform an Action in a coroutine."""
+    await action.start()
 
 
 class Thing:
@@ -49,6 +58,40 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
+        self.subscribe_topics = [f"{self.id}/state"]
+        ee.on(self.id, self.dispatch)
+
+    async def remove_listener(self):
+        for topic in self.subscribe_topics:
+            logger.info(f"remove topic {topic}'s listener dispatch")
+            ee.remove_listener(topic, self.dispatch)
+
+    async def dispatch(self, message):
+        logger.debug(f"dispatch {message}")
+        msg_type = message.get("messageType", "")
+
+        if msg_type == "setProperty":
+            for property_name, property_value in message["data"].items():
+                await self.set_property(property_name, property_value)
+
+        elif msg_type == "syncProperty":
+            for property_name, property_value in message["data"].items():
+                await self.sync_property(property_name, property_value)
+
+        elif msg_type == "requestAction":
+            for action_name, action_params in message["data"].items():
+                input_ = None
+                if "input" in action_params:
+                    input_ = action_params["input"]
+
+                action = await self.perform_action(action_name, input_)
+                if action:
+                    asyncio.create_task(perform_action(action))
+                else:
+                    await self.error_notify("Invalid action request", message)
+
+        else:
+            await self.error_notify("Unknown messageType: " + msg_type, message)
 
     async def as_thing_description(self):
         """
@@ -261,7 +304,7 @@ class Thing:
         """
         return property_name in self.properties
 
-    async def set_property(self, property_name, value):
+    async def set_property(self, property_name: str, value):
         """
         Set a property value.
         property_name -- name of the property to set
@@ -273,11 +316,12 @@ class Thing:
         logger.info(f"set {self.id}'s property {property_name} to {value}")
         try:
             await prop.set_value(value)
+            await self.property_notify(prop, value)
+            await self.property_action(prop)
         except PropertyError as e:
-            logger.error(f"bad property value {e}")
-            await self.error_notify(e)
+            await self.error_notify(str(e))
 
-    async def sync_property(self, property_name, value):
+    async def sync_property(self, property_name: str, value):
         """
         Sync a property value from cloud or mqtt etc.
         property_name -- name of the property to set
@@ -289,9 +333,9 @@ class Thing:
         logger.info(f"sync {self.title}'s property {property_name} to {value}")
         try:
             await prop.set_value(value, with_action=False)
+            await self.property_notify(prop, value)
         except PropertyError as e:
-            logger.error(f"bad property value {e}")
-            await self.error_notify(e)
+            await self.error_notify(str(e))
 
     async def get_action(self, action_name, action_id):
         """
@@ -444,16 +488,27 @@ class Thing:
         Notify all subscribers of a property change.
         property_ -- the property that changed
         """
-        for subscriber in list(self.subscribers.values()):
-            await subscriber.update_property(property_, value_)
+        message = {
+            "thing_id": self.id,
+            "messageType": "propertyStatus",
+            "data": {property_.name: value_}
+        }
+        ee.emit(f"{self.id}/state", message)
 
-    async def error_notify(self, error_):
+    async def error_notify(self, error_, request=None):
         """
         Notify all subscribers of a error.
         error_ -- the error that reported
         """
-        for subscriber in list(self.subscribers.values()):
-            await subscriber.update_error(error_)
+        message = {
+            "thing_id": self.id,
+            "messageType": "error",
+            "data": {"status": "400 Bad Request", "message": str(error_), },
+        }
+        if request:
+            message.update({"request": request})
+
+        ee.emit(f"{self.id}/error", message)
 
     async def property_action(self, property_):
         """
@@ -467,8 +522,12 @@ class Thing:
         Notify all subscribers of an action status change.
         action -- the action whose status changed
         """
-        for subscriber in list(self.subscribers.values()):
-            await subscriber.update_action(action)
+        message = {
+            "thing_id": self.id,
+            "messageType": "actionStatus",
+            "data": await action.as_action_description(),
+        }
+        ee.emit(f"{self.id}/state", message)
 
     async def event_notify(self, event):
         """
@@ -479,8 +538,12 @@ class Thing:
         if event.title not in self.available_events:
             return
 
-        for subscriber in list(self.available_events[event.title]["subscribers"].values()):
-            await subscriber.update_event(event)
+        message = {
+            "thing_id": self.id,
+            "messageType": "event",
+            "data": await event.as_event_description(),
+        }
+        ee.emit(f"{self.id}/event", message)
 
     async def add_owner(self, owner: str):
         """

@@ -26,11 +26,11 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 fastapi = "^0.61.1"
-uvicorn = "^0.11.8"
-ujson = "^3.1.0"
+uvicorn = {extras = ["standard"], version = "^0.12.1"}
+ujson = "^4.0.0"
 email_validator = "^1.1.1"
-httpx = "^0.14.3"
-pyee = "^7.0.2"
+httpx = "^0.16.0"
+pyee = "^8.1.0"
 jsonschema = "^3.2.0"
 ifaddr = "^0.1.7"
 zeroconf = "^0.28.2"

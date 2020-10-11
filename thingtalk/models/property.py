@@ -32,9 +32,9 @@ class Property:
 
         # Add the property change observer to notify the Thing about a property
         # change.
-        self.value.on("update", lambda value_: self.thing.property_notify(self, value_))
-        self.value.on("sync", lambda value_: self.thing.property_notify(self, value_))
-        self.value.on("update", lambda _: self.thing.property_action(self))
+        # self.value.on("update", lambda value_: self.thing.property_notify(self, value_))
+        # self.value.on("sync", lambda value_: self.thing.property_notify(self, value_))
+        # self.value.on("update", lambda _: self.thing.property_action(self))
 
     async def validate_value(self, value):
         """
