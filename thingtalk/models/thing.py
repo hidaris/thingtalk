@@ -91,7 +91,7 @@ class Thing:
                     await self.error_notify("Invalid action request", message)
 
         else:
-            await self.error_notify("Unknown messageType: " + msg_type, message)
+            await self.error_notify(f"Unknown messageType: {msg_type}", message)
 
     async def as_thing_description(self):
         """
