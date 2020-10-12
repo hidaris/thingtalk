@@ -152,7 +152,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
             try:
                 message = TopicMsg(**receive_message)
-                logger.debug(message.json())
             except ValidationError as e:
                 logger.error(e.json())
                 await websocket.send_json(e.json(), mode="binary")
@@ -161,7 +160,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if msg_type == "subscribe":
                 for thing_id in message.data.get("thing_ids", []):
-                    logger.info(f"subscribe topic {thing_id}/state {thing_id}/event")
+                    logger.info(f"subscribe topic {thing_id}/state {thing_id}/event {thing_id}/error")
                     for topic_type in ["state", "event", "error"]:
                         subscribe_topic = f"{thing_id}/{topic_type}"
                         ee.on(subscribe_topic, send)

@@ -56,6 +56,7 @@ async def get_thing_by_id(
     :return UJSONResponse
     """
     description = await thing.as_thing_description()
+    description["href"] = await thing.get_href()
     description["links"].append(
         {
             "rel": "alternate",

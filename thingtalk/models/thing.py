@@ -62,9 +62,11 @@ class Thing:
         ee.on(self.id, self.dispatch)
 
     async def remove_listener(self):
-        for topic in self.subscribe_topics:
-            logger.info(f"remove topic {topic}'s listener dispatch")
-            ee.remove_listener(topic, self.dispatch)
+        logger.info(f"remove topic {self.id}'s listener dispatch")
+        ee.remove_listener(self.id, self.dispatch)
+        # for topic in self.subscribe_topics:
+        #     logger.info(f"remove topic {topic}'s listener dispatch")
+        #     ee.remove_listener(topic, self.dispatch)
 
     async def dispatch(self, message):
         logger.debug(f"dispatch {message}")
@@ -543,6 +545,7 @@ class Thing:
             "messageType": "event",
             "data": await event.as_event_description(),
         }
+        logger.debug(message)
         ee.emit(f"{self.id}/event", message)
 
     async def add_owner(self, owner: str):

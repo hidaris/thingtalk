@@ -65,6 +65,8 @@ class MultipleThings:
         # 来自 zigbee2mqtt 的 left_network 事件
         # 由于适配问题，thingtalk 中不一定存在对应的设备
         if self.things.get(thing_id):
+            thing = self.things[thing_id]
+            await thing.remove_listener()
             del self.things[thing_id]
 
             server = self.things.get('urn:thingtalk:server')
