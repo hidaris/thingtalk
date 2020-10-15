@@ -7,5 +7,5 @@ from .models.property import Property
 from .app import app
 from .models.containers import SingleThing, MultipleThings
 from .models.thing import Thing
+from .domains.iot import Device
 from .models.value import Value
-from .utils import background_thread_loop

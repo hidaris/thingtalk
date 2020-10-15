@@ -1,4 +1,5 @@
 from .event import ThingPairedEvent, ThingRemovedEvent
+from .thing import Thing
 
 
 class SingleThing:
@@ -27,7 +28,7 @@ class SingleThing:
 class MultipleThings:
     """A container for multiple things."""
 
-    def __init__(self, things, name):
+    def __init__(self, things: dict, name: str):
         """
         Initialize the container.
         things -- the things to store
@@ -35,6 +36,7 @@ class MultipleThings:
         """
         self.things = things
         self.name = name
+        self.server = self.things.get('urn:thingtalk:server')
 
     async def get_thing(self, idx):
         """
@@ -51,11 +53,11 @@ class MultipleThings:
         """Get the mDNS server name."""
         return self.name
 
-    async def add_thing(self, thing):
+    async def add_thing(self, thing: Thing):
         self.things.update({thing.id: thing})
-        server = self.things.get('urn:thingtalk:server')
+        await thing.subscribe_broadcast()
 
-        await server.add_event(ThingPairedEvent({
+        await self.server.add_event(ThingPairedEvent({
             '@type': list(thing._type),
             'id': thing.id,
             'title': thing.title
@@ -69,8 +71,6 @@ class MultipleThings:
             await thing.remove_listener()
             del self.things[thing_id]
 
-            server = self.things.get('urn:thingtalk:server')
-
-            await server.add_event(ThingRemovedEvent({
+            await self.server.add_event(ThingRemovedEvent({
                 'id': thing_id,
             }))

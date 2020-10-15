@@ -54,19 +54,20 @@ class Thing:
         self.available_events = {}
         self.actions = {}
         self.events = []
-        self.subscribers = {}
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
-        self.subscribe_topics = [f"{self.id}/state"]
+        self.subscribe_topics = []
         ee.on(self.id, self.dispatch)
+        self.subscribe_topics.append(self.id)
+
+    async def subscribe_broadcast(self):
+        pass
 
     async def remove_listener(self):
-        logger.info(f"remove topic {self.id}'s listener dispatch")
-        ee.remove_listener(self.id, self.dispatch)
-        # for topic in self.subscribe_topics:
-        #     logger.info(f"remove topic {topic}'s listener dispatch")
-        #     ee.remove_listener(topic, self.dispatch)
+        for topic in self.subscribe_topics:
+            logger.info(f"remove topic {topic}'s listener dispatch")
+            ee.remove_listener(topic, self.dispatch)
 
     async def dispatch(self, message):
         logger.debug(f"dispatch {message}")
@@ -441,49 +442,6 @@ class Thing:
             "class": cls,
         }
         self.actions[name] = []
-
-    async def add_subscriber(self, ws):
-        """
-        Add a new websocket subscriber.
-        ws -- the websocket
-        """
-        if id(ws) not in self.subscribers:
-            logger.info(f"subscriber {ws.active_connection.url} added")
-            self.subscribers[id(ws)] = ws
-
-    async def remove_subscriber(self, ws):
-        """
-        Remove a websocket subscriber.
-        ws -- the websocket
-        """
-        if id(ws) in self.subscribers:
-            logger.info(f"subscriber {ws.active_connection.url} poped")
-            self.subscribers.pop(id(ws))
-
-        for name in self.available_events:
-            await self.remove_event_subscriber(name, ws)
-
-    async def add_event_subscriber(self, name, ws):
-        """
-        Add a new websocket subscriber to an event.
-        name -- name of the event
-        ws -- the websocket
-        """
-        if name in self.available_events:
-            if id(ws) not in self.available_events[name]["subscribers"]:
-                self.available_events[name]["subscribers"][id(ws)] = ws
-
-    async def remove_event_subscriber(self, name, ws):
-        """
-        Remove a websocket subscriber from an event.
-        name -- name of the event
-        ws -- the websocket
-        """
-        if (
-                name in self.available_events
-                and id(ws) in self.available_events[name]["subscribers"]
-        ):
-            self.available_events[name]["subscribers"].pop(id(ws))
 
     async def property_notify(self, property_, value_):
         """

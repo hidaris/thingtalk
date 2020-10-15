@@ -1,6 +1,5 @@
 from fastapi.exceptions import HTTPException
-from fastapi import Request, Depends, WebSocket
-from loguru import logger
+from fastapi import Request, Depends
 
 
 async def get_thing(request: Request, thing_id: str):

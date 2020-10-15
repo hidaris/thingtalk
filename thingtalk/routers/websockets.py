@@ -1,5 +1,3 @@
-import asyncio
-
 from enum import Enum
 from typing import Tuple, Optional, Dict, Any
 from functools import partial
@@ -12,6 +10,8 @@ from websockets import ConnectionClosedOK, ConnectionClosedError
 from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
+from ..dependencies import ee
+
 
 async def perform_action(action):
     """Perform an Action in a coroutine."""
@@ -21,14 +21,10 @@ async def perform_action(action):
 router = APIRouter()
 
 
-from ..dependencies import ee
-
-
 class MsgType(str, Enum):
     subscribe = 'subscribe'
     set_property = 'setProperty'
     request_action = 'requestAction'
-    add_event_subscription = 'addEventSubscription'
 
 
 class Msg(BaseModel):
@@ -90,5 +86,7 @@ async def websocket_endpoint(websocket: WebSocket):
         topics = subscribe_table.get(id(websocket))
         if topics:
             for topic in topics:
-                logger.info(f"remove topic {topic}'s listener send")
-                ee.remove_listener(topic, send)
+                if send in ee.listeners(topic):
+                    ee.remove_listener(topic, send)
+            del subscribe_table[id(websocket)]
+            logger.info(f"remove listener send of websocket {id(websocket)}")
