@@ -5,8 +5,6 @@ from fastapi import Depends
 from fastapi.requests import Request
 from fastapi.responses import UJSONResponse
 
-from loguru import logger
-
 from ..dependencies import get_thing
 from ..models.thing import Thing
 from ..utils import get_http_href, get_ws_href

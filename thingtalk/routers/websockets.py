@@ -39,12 +39,13 @@ class TopicMsg(BaseModel):
 
 
 async def send_data(websocket: WebSocket, data):
-    logger.info(data)
     if websocket.application_state == WebSocketState.CONNECTED:
         try:
             await websocket.send_json(data, mode='binary')
         except (WebSocketDisconnect, ConnectionClosedOK, ConnectionClosedError) as e:
             logger.debug(e)
+    else:
+        logger.info(f"can't send data {data} because websocket was closed")
 
 
 subscribe_table = {}
@@ -60,7 +61,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             receive_message = await websocket.receive_json()
-            logger.info(f"ws receive message {receive_message}")
+            logger.info(f"websocket {id(websocket)} receive message {receive_message}")
 
             try:
                 message = TopicMsg(**receive_message)
@@ -82,7 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 ee.emit(message.topic, receive_message)
 
     except (WebSocketDisconnect, ConnectionClosedOK) as e:
-        logger.info(f"websocket was closed with code {e}")
+        logger.info(f"websocket {id(websocket)} was closed with code {e}")
         topics = subscribe_table.get(id(websocket))
         if topics:
             for topic in topics:
