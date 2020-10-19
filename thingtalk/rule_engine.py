@@ -56,7 +56,7 @@ class And:
                 ee.emit(conclusion.get("thing_id"), conclusion)
             for question_key, should_value in tuple(self.questions.items()):
                 _question_env[question_key] = None
-                logger.debug(_question_env)
+                # logger.debug(_question_env)
 
 
 class Or:
@@ -83,8 +83,9 @@ def generate_rule_id(thing_id, property_name, property_value):
 question_env = {}
 
 rule_env = {
-    "things_xxxx_state_on": [
-        And({"things_xxxx_state": "ON", "things_xxxx_brightness": 100}), ],
+    # "things_xxxx_state_on": {
+    #     "xxxx": And({"things_xxxx_state": "ON", "things_xxxx_brightness": 100})
+    # },
 }
 
 from .dependencies import ee
@@ -96,14 +97,15 @@ async def compute_rule(msg):
             rule_key = generate_rule_id(msg.get("thing_id"), property_name, value)
             question_key = generate_question_key(msg.get("thing_id"), property_name)
             logger.info(f"compute rule: key {rule_key}")
-            logger.debug(f"old question table {question_env}")
+            # logger.debug(f"old question table {question_env}")
             question_env[question_key] = value
-            logger.debug(f"new question table {question_env}")
-            for rule in rule_env.get(rule_key, []):
+            # logger.debug(f"new question table {question_env}")
+            # if rule_env.get(rule_key):
+            for rule_id, rule in tuple(rule_env.get(rule_key, {}).items()):
                 rule.compute(question_env)
 
 
-async def load_rule(rules):
+async def load_rules(rules):
     for rule in rules:
         questions = {}
         # 更新 question env，以及当前 rule 需要查询的 question_keys
@@ -116,22 +118,58 @@ async def load_rule(rules):
         for pre in rule.get("premise"):
             question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
             rule_key = generate_rule_id(pre.get("thing_id"), pre.get("name"), pre.get("value"))
-            rule_lst = rule_env.get(question_key, [])
+            rule_id_map = rule_env.get(rule_key, {})
+            logger.debug(rule_id_map)
             if rule.get("premise_type") == "Singleton":
                 question = {question_key: pre.get("value")}
-                rule_lst.append(And(question, conclusion=rule.get("conclusion")))
+                rule_id_map.update({rule.get("id"): And(question, conclusion=rule.get("conclusion"))})
             elif rule.get("premise_type") == "And":
-                rule_lst.append(And(questions, conclusion=rule.get("conclusion")))
+                rule_id_map.update({rule.get("id"): And(questions, conclusion=rule.get("conclusion"))})
             elif rule.get("premise_type") == "Or":
-                rule_lst.append(Or(questions, conclusion=rule.get("conclusion")))
-            print(rule_lst)
+                rule_id_map.update({rule.get("id"): Or(questions, conclusion=rule.get("conclusion"))})
             rule_env.update({
-                rule_key: rule_lst
+                rule_key: rule_id_map
             })
             ee.on(f"{pre.get('thing_id')}/state", compute_rule)
+
     logger.info(f"load question env: {question_env}")
     logger.info(f"load rule env: {rule_env}")
 
 
-async def disable_rule(topic):
-    ee.remove_listener(topic, compute_rule)
+async def load_rule(rule):
+    questions = {}
+    # 更新 question env，以及当前 rule 需要查询的 question_keys
+    for pre in rule.get("premise"):
+        question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
+
+        questions.update({question_key: pre.get("value")})
+        question_env.update({question_key: None})
+
+    for pre in rule.get("premise"):
+        question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
+        rule_key = generate_rule_id(pre.get("thing_id"), pre.get("name"), pre.get("value"))
+        rule_id_map = rule_env.get(rule_key, {})
+        logger.debug(rule_id_map)
+        if rule.get("premise_type") == "Singleton":
+            question = {question_key: pre.get("value")}
+            rule_id_map.update({rule.get("id"): And(question, conclusion=rule.get("conclusion"))})
+        elif rule.get("premise_type") == "And":
+            rule_id_map.update({rule.get("id"): And(questions, conclusion=rule.get("conclusion"))})
+        elif rule.get("premise_type") == "Or":
+            rule_id_map.update({rule.get("id"): Or(questions, conclusion=rule.get("conclusion"))})
+        rule_env.update({
+            rule_key: rule_id_map
+        })
+        ee.on(f"{pre.get('thing_id')}/state", compute_rule)
+
+logger.info(f"load question env: {question_env}")
+logger.info(f"load rule env: {rule_env}")
+
+
+async def disable_rule(rule_key, rule_db_id):
+    logger.info(rule_env)
+    rule_bind = rule_env.get(rule_key)
+    if rule_bind:
+        if rule_bind.get(rule_db_id):
+            del rule_bind[rule_db_id]
+    logger.info(rule_env)
