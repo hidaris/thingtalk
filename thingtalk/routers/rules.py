@@ -27,6 +27,7 @@ class PremiseType(str, Enum):
 
 
 class Rule(BaseModel):
+    enabled: bool
     name: str
     premise_type: PremiseType
     premise: typing.List[typing.Dict[str, typing.Union[str, dict]]]

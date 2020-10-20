@@ -1,10 +1,6 @@
 from loguru import logger
 
 
-async def get_rules():
-    pass
-
-
 {
     "scene_id": "xxxxx",
     "name": "这是一个场景",
@@ -29,19 +25,6 @@ async def get_rules():
 }
 
 
-# class Singleton:
-#     def __init__(self, question, conclusion=None):
-#         self.question = question
-#         self.conclusion = conclusion
-#
-#     def compute(self, _question_env):
-#         ans = (_question_env[self.question_key] == question_env[self.question_key]["last_seen"])
-#         if ans:
-#             logger.info(f"conclusions {self.conclusion}")
-#             for conclusion in self.conclusion:
-#                 ee.emit(conclusion.get("thing_id"), conclusion)
-
-
 class And:
     def __init__(self, questions: dict, conclusion=None):
         self.questions = questions
@@ -50,7 +33,6 @@ class And:
     def compute(self, _question_env):
         ans_lst = [_question_env[question_key] == should_value for question_key, should_value in
                    tuple(self.questions.items())]
-        logger.debug(ans_lst)
         if len(set(ans_lst)) == 1 and (True in ans_lst):
             for conclusion in self.conclusion:
                 ee.emit(conclusion.get("thing_id"), conclusion)
@@ -67,7 +49,6 @@ class Or:
     def compute(self, _question_env):
         ans_lst = [_question_env[question_key] == should_value for question_key, should_value in
                    tuple(self.questions.items())]
-        logger.debug(ans_lst)
         if True in ans_lst:
             ee.emit(self.conclusion.get("thing_id"), self.conclusion)
 
@@ -82,11 +63,10 @@ def generate_rule_id(thing_id, property_name, property_value):
 
 question_env = {}
 
-rule_env = {
-    # "things_xxxx_state_on": {
-    #     "xxxx": And({"things_xxxx_state": "ON", "things_xxxx_brightness": 100})
-    # },
-}
+# "things_xxxx_state_on": {
+#     "xxxx": And({"things_xxxx_state": "ON", "things_xxxx_brightness": 100})
+# },
+rule_env = {}
 
 from .dependencies import ee
 
@@ -96,12 +76,12 @@ async def compute_rule(msg):
         for property_name, value in msg.get("data").items():
             rule_key = generate_rule_id(msg.get("thing_id"), property_name, value)
             question_key = generate_question_key(msg.get("thing_id"), property_name)
-            logger.info(f"compute rule: key {rule_key}")
             # logger.debug(f"old question table {question_env}")
             question_env[question_key] = value
             # logger.debug(f"new question table {question_env}")
             # if rule_env.get(rule_key):
             for rule_id, rule in tuple(rule_env.get(rule_key, {}).items()):
+                logger.info(f"compute rule: key {rule_key}")
                 rule.compute(question_env)
 
 

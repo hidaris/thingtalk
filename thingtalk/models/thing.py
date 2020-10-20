@@ -315,11 +315,12 @@ class Thing:
         """
         prop = await self.find_property(property_name)
         if not prop:
+            logger.error(f"{self.title} doesn't support {property_name}")
             return
-        logger.info(f"set {self.id}'s property {property_name} to {value}")
+        logger.info(f"set {self.title}'s property {property_name} to {value}")
         try:
             await prop.set_value(value)
-            await self.property_notify(prop, value)
+            await self.property_notify({property_name: value})
             await self.property_action(prop)
         except PropertyError as e:
             await self.error_notify(str(e))
@@ -332,13 +333,34 @@ class Thing:
         """
         prop = await self.find_property(property_name)
         if not prop:
+            logger.warning(f"{self.title} doesn't support {property_name}")
             return
         logger.info(f"sync {self.title}'s property {property_name} to {value}")
         try:
             await prop.set_value(value, with_action=False)
-            await self.property_notify(prop, value)
+            await self.property_notify({property_name: value})
         except PropertyError as e:
             await self.error_notify(str(e))
+
+    async def bulk_sync_property(self, data: dict):
+        """
+        Bulk yync property value from cloud or mqtt etc.
+        property_name -- name of the property to set
+        value -- value to set
+        """
+        for property_name, value in tuple(data.items()):
+            prop = await self.find_property(property_name)
+            if not prop:
+                logger.warning(f"{self.title} doesn't support {property_name}")
+                del data[property_name]
+                continue
+            logger.info(f"sync {self.title}'s property {property_name} to {value}")
+            try:
+                await prop.set_value(value, with_action=False)
+            except PropertyError as e:
+                del data[property_name]
+                await self.error_notify(str(e))
+        await self.property_notify(data)
 
     async def get_action(self, action_name, action_id):
         """
@@ -443,7 +465,7 @@ class Thing:
         }
         self.actions[name] = []
 
-    async def property_notify(self, property_, value_):
+    async def property_notify(self, data: dict):
         """
         Notify all subscribers of a property change.
         property_ -- the property that changed
@@ -451,8 +473,9 @@ class Thing:
         message = {
             "thing_id": self.id,
             "messageType": "propertyStatus",
-            "data": {property_.name: value_}
+            "data": data
         }
+        logger.info(message)
         ee.emit(f"{self.id}/state", message)
 
     async def error_notify(self, error_, request=None):
