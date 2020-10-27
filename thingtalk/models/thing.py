@@ -13,6 +13,7 @@ from .property import Property
 from .errors import PropertyError
 
 from ..dependencies import ee
+from ..routers.websockets import TopicMsg
 
 
 async def perform_action(action):
@@ -57,9 +58,8 @@ class Thing:
         self.owners = []
         self.href_prefix = ""
         self.ui_href = None
-        self.subscribe_topics = []
-        ee.on(self.id, self.dispatch)
-        self.subscribe_topics.append(self.id)
+        self.subscribe_topics = [f"things/{self.id}"]
+        ee.on(f"things/{self.id}", self.dispatch)
 
     async def subscribe_broadcast(self):
         pass
@@ -69,20 +69,20 @@ class Thing:
             logger.info(f"remove topic {topic}'s listener dispatch")
             ee.remove_listener(topic, self.dispatch)
 
-    async def dispatch(self, message):
+    async def dispatch(self, message: TopicMsg):
         logger.debug(f"dispatch {message}")
-        msg_type = message.get("messageType", "")
+        msg_type = message.messageType
 
         if msg_type == "setProperty":
-            for property_name, property_value in message["data"].items():
+            for property_name, property_value in message.data.items():
                 await self.set_property(property_name, property_value)
 
         elif msg_type == "syncProperty":
-            for property_name, property_value in message["data"].items():
+            for property_name, property_value in message.data.items():
                 await self.sync_property(property_name, property_value)
 
         elif msg_type == "requestAction":
-            for action_name, action_params in message["data"].items():
+            for action_name, action_params in message.data.items():
                 input_ = None
                 if "input" in action_params:
                     input_ = action_params["input"]
@@ -424,7 +424,8 @@ class Thing:
         if "input" in action_type["metadata"]:
             try:
                 validate(input_, action_type["metadata"]["input"])
-            except ValidationError:
+            except ValidationError as e:
+                logger.error(str(e))
                 return None
 
         action = action_type["class"](self, input_=input_)
@@ -458,7 +459,7 @@ class Thing:
         if metadata is None:
             metadata = cls.schema
 
-        name = cls.__name__.lower()
+        name = cls.title
         self.available_actions[name] = {
             "metadata": metadata,
             "class": cls,
@@ -471,12 +472,12 @@ class Thing:
         property_ -- the property that changed
         """
         message = {
-            "thing_id": self.id,
+            "topic": f"things/{self.id}",
             "messageType": "propertyStatus",
             "data": data
         }
         logger.info(message)
-        ee.emit(f"{self.id}/state", message)
+        ee.emit(f"things/{self.id}/state", message)
 
     async def error_notify(self, error_, request=None):
         """
@@ -484,14 +485,14 @@ class Thing:
         error_ -- the error that reported
         """
         message = {
-            "thing_id": self.id,
+            "topic": f"things/{self.id}",
             "messageType": "error",
             "data": {"status": "400 Bad Request", "message": str(error_), },
         }
         if request:
             message.update({"request": request})
 
-        ee.emit(f"{self.id}/error", message)
+        ee.emit(f"things/{self.id}/error", message)
 
     async def property_action(self, property_):
         """
@@ -506,11 +507,11 @@ class Thing:
         action -- the action whose status changed
         """
         message = {
-            "thing_id": self.id,
+            "topic": f"things/{self.id}",
             "messageType": "actionStatus",
             "data": await action.as_action_description(),
         }
-        ee.emit(f"{self.id}/state", message)
+        ee.emit(f"things/{self.id}/state", message)
 
     async def event_notify(self, event):
         """
@@ -522,12 +523,12 @@ class Thing:
             return
 
         message = {
-            "thing_id": self.id,
+            "topic": f"things/{self.id}",
             "messageType": "event",
             "data": await event.as_event_description(),
         }
         logger.debug(message)
-        ee.emit(f"{self.id}/event", message)
+        ee.emit(f"things/{self.id}/event", message)
 
     async def add_owner(self, owner: str):
         """

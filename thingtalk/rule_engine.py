@@ -1,70 +1,133 @@
+import typing
+
+from enum import Enum
+
 from loguru import logger
+from pydantic import BaseModel, constr
 
 
-{
-    "scene_id": "xxxxx",
-    "name": "这是一个场景",
-    "timeout": 0,
-    "data": [
-        {
-            "thing_id": "xxxxx",
-            "messageType": "setProperty",
-            "data": {}
-        },
-        {
-            "thing_id": "xxxxx",
-            "messageType": "setProperty",
-            "data": {}
-        },
-        {
-            "thing_id": "xxxxx",
-            "messageType": "setProperty",
-            "data": {}
-        }
-    ]
-}
+class PremiseType(str, Enum):
+    psingleton: str = "Singleton"
+    pand: str = "And"
+    por: str = "Or"
+
+
+class ThingPremise(BaseModel):
+    topic: constr(regex=r'^things\/[0-9a-zA-Z\_\-\:]+$')
+    messageType: str
+    name: str
+    op: str
+    value: typing.Any
+
+
+class ScenePremise(BaseModel):
+    topic: constr(regex=r'^scenes\/[0-9a-zA-Z\_\-\:]+$')
+    messageType: str
+    data: typing.Dict[str, typing.Any]
+
+
+class Conclusion(BaseModel):
+    topic: constr(regex=r'^things|scenes\/[0-9a-zA-Z\_\-\:]+$')
+    messageType: str
+    data: typing.Dict[str, typing.Any]
+
+
+class RuleInput(BaseModel):
+    enabled: bool
+    name: str
+    premise_type: PremiseType
+    premise: typing.List[typing.Union[ThingPremise, ScenePremise]]
+    conclusion: typing.List[Conclusion]
+
+
+class Rule(BaseModel):
+    id: str
+    enabled: bool
+    name: str
+    premise_type: PremiseType
+    premise: typing.List[typing.Union[ThingPremise, ScenePremise]]
+    conclusion: typing.List[Conclusion]
 
 
 class And:
-    def __init__(self, questions: dict, conclusion=None):
+    def __init__(self, questions: dict, enabled=True, conclusion=None):
         self.questions = questions
+        self.enabled = enabled
         self.conclusion = conclusion
 
-    def compute(self, _question_env):
-        ans_lst = [_question_env[question_key] == should_value for question_key, should_value in
-                   tuple(self.questions.items())]
-        if len(set(ans_lst)) == 1 and (True in ans_lst):
+    async def compute(self, _question_env):
+        ans = True
+        for question_key, question in tuple(self.questions.items()):
+            logger.debug(question)
+            if question.get("op") == "eq":
+                _res = _question_env[question_key] == question.get("value")
+            elif question.get("op") == "gt":
+                _res = _question_env[question_key] > question.get("value")
+            elif question.get("op") == "lt":
+                _res = _question_env[question_key] < question.get("value")
+            elif question.get("op") == "run/scene":
+                _res = _question_env[question_key] is True
+            else:
+                _res = False
+            logger.debug(ans)
+            logger.debug(_res)
+            ans = ans and _res
+        if ans:
             for conclusion in self.conclusion:
-                ee.emit(conclusion.get("thing_id"), conclusion)
+                ee.emit(conclusion.topic, conclusion)
             for question_key, should_value in tuple(self.questions.items()):
                 _question_env[question_key] = None
                 # logger.debug(_question_env)
 
 
 class Or:
-    def __init__(self, *question_keys, conclusion=None):
+    def __init__(self, *question_keys, enabled=True, conclusion=None):
         self.question_keys = question_keys
+        self.enabled = enabled
         self.conclusion = conclusion
 
-    def compute(self, _question_env):
-        ans_lst = [_question_env[question_key] == should_value for question_key, should_value in
-                   tuple(self.questions.items())]
-        if True in ans_lst:
-            ee.emit(self.conclusion.get("thing_id"), self.conclusion)
+    async def compute(self, _question_env):
+        ans = False
+        for question_key, question in tuple(self.questions.items()):
+            logger.debug(question)
+            if question.get("op") == "eq":
+                _res = _question_env[question_key] == question.get("value")
+            elif question.get("op") == "gt":
+                _res = _question_env[question_key] > question.get("value")
+            elif question.get("op") == "lt":
+                _res = _question_env[question_key] < question.get("value")
+            elif question.get("op") == "run/scene":
+                _res = _question_env[question_key] is True
+            else:
+                _res = False
+            ans = ans or _res
+        if ans:
+            for conclusion in self.conclusion:
+                ee.emit(conclusion.topic, conclusion)
+            for question_key, should_value in tuple(self.questions.items()):
+                _question_env[question_key] = None
 
 
-def generate_question_key(thing_id, property_name):
-    return f"things_{thing_id}_{property_name}"
+def generate_question_key(topic, property_name):
+    topic_words = topic.split("/")
+    return f"things_{topic_words[1]}_{property_name}"
 
 
-def generate_rule_id(thing_id, property_name, property_value):
-    return f"things_{thing_id}_{property_name}_{property_value}"
+def generate_scenes_key(topic):
+    topic_words = topic.split("/")
+    return f"scenes_{topic_words[1]}"
+
+
+def generate_rule_id(topic, property_name, property_value):
+    topic_words = topic.split("/")
+    return f"things_{topic_words[1]}_{property_name}_{property_value}"
 
 
 question_env = {}
 
 # "things_xxxx_state_on": {
-#     "xxxx": And({"things_xxxx_state": "ON", "things_xxxx_brightness": 100})
+#     "xxxx": And({"things_xxxx_state": {"op": "eq", "value": "ON"},
+#                  "things_xxxx_brightness": {"op": "lt", "value": 100}}, enabled=True)
 # },
 rule_env = {}
 
@@ -74,73 +137,71 @@ from .dependencies import ee
 async def compute_rule(msg):
     if msg.get("messageType") == "propertyStatus":
         for property_name, value in msg.get("data").items():
-            rule_key = generate_rule_id(msg.get("thing_id"), property_name, value)
-            question_key = generate_question_key(msg.get("thing_id"), property_name)
+            rule_key = generate_rule_id(msg.get("topic"), property_name, value)
+            question_key = generate_question_key(msg.get("topic"), property_name)
             # logger.debug(f"old question table {question_env}")
             question_env[question_key] = value
+            # question_env[question_key] = str(value)
             # logger.debug(f"new question table {question_env}")
             # if rule_env.get(rule_key):
+            logger.info(f"compute rule: key {rule_key}")
             for rule_id, rule in tuple(rule_env.get(rule_key, {}).items()):
-                logger.info(f"compute rule: key {rule_key}")
-                rule.compute(question_env)
+                logger.info(f"compute rule: key {rule_key} enabled {rule.enabled}")
+                if rule.enabled:
+                    await rule.compute(question_env)
+    if msg.get("messageType") == "SceneStatus":
+        rule_key = generate_scenes_key(msg.get("topic"))
+        question_key = generate_scenes_key(msg.get("topic"))
+        question_env[question_key] = True
+        # if rule_env.get(rule_key):
+        logger.info(f"compute rule: key {rule_key}")
+        for rule_id, rule in tuple(rule_env.get(rule_key, {}).items()):
+            logger.info(f"compute rule: key {rule_key} enabled {rule.enabled}")
+            if rule.enabled:
+                await rule.compute(question_env)
 
 
-async def load_rules(rules):
+async def load_rules(rules: typing.List[typing.Optional[Rule]]):
     for rule in rules:
-        questions = {}
-        # 更新 question env，以及当前 rule 需要查询的 question_keys
-        for pre in rule.get("premise"):
-            question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
-
-            questions.update({question_key: pre.get("value")})
-            question_env.update({question_key: None})
-
-        for pre in rule.get("premise"):
-            question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
-            rule_key = generate_rule_id(pre.get("thing_id"), pre.get("name"), pre.get("value"))
-            rule_id_map = rule_env.get(rule_key, {})
-            logger.debug(rule_id_map)
-            if rule.get("premise_type") == "Singleton":
-                question = {question_key: pre.get("value")}
-                rule_id_map.update({rule.get("id"): And(question, conclusion=rule.get("conclusion"))})
-            elif rule.get("premise_type") == "And":
-                rule_id_map.update({rule.get("id"): And(questions, conclusion=rule.get("conclusion"))})
-            elif rule.get("premise_type") == "Or":
-                rule_id_map.update({rule.get("id"): Or(questions, conclusion=rule.get("conclusion"))})
-            rule_env.update({
-                rule_key: rule_id_map
-            })
-            ee.on(f"{pre.get('thing_id')}/state", compute_rule)
-
+        await load_rule(rule)
     logger.info(f"load question env: {question_env}")
     logger.info(f"load rule env: {rule_env}")
 
 
-async def load_rule(rule):
+async def load_rule(rule: Rule):
     questions = {}
     # 更新 question env，以及当前 rule 需要查询的 question_keys
-    for pre in rule.get("premise"):
-        question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
+    for pre in rule.premise:
+        if "things" in pre.topic:
+            question_key = generate_question_key(pre.topic, pre.name)
+            questions.update({question_key: {"op": pre.op, "value": pre.value}})
+            question_env.update({question_key: None})
+        elif "scenes" in pre.topic:
+            question_key = generate_scenes_key(pre.topic)
+            questions.update({question_key: {"op": "run/scene"}})
+            question_env.update({question_key: None})
 
-        questions.update({question_key: pre.get("value")})
-        question_env.update({question_key: None})
-
-    for pre in rule.get("premise"):
-        question_key = generate_question_key(pre.get("thing_id"), pre.get("name"))
-        rule_key = generate_rule_id(pre.get("thing_id"), pre.get("name"), pre.get("value"))
+    for pre in rule.premise:
+        if "things" in pre.topic:
+            rule_key = generate_rule_id(pre.topic, pre.name, pre.value)
+        elif "scenes" in pre.topic:
+            rule_key = generate_scenes_key(pre.topic)
         rule_id_map = rule_env.get(rule_key, {})
         logger.debug(rule_id_map)
-        if rule.get("premise_type") == "Singleton":
-            question = {question_key: pre.get("value")}
-            rule_id_map.update({rule.get("id"): And(question, conclusion=rule.get("conclusion"))})
-        elif rule.get("premise_type") == "And":
-            rule_id_map.update({rule.get("id"): And(questions, conclusion=rule.get("conclusion"))})
-        elif rule.get("premise_type") == "Or":
-            rule_id_map.update({rule.get("id"): Or(questions, conclusion=rule.get("conclusion"))})
+        if rule.premise_type in ["And", "Singleton"]:
+            rule_id_map.update({
+                rule.id: And(questions, enabled=rule.enabled, conclusion=rule.conclusion)
+            })
+        elif rule.premise_type == "Or":
+            rule_id_map.update({
+                rule.id: Or(questions, enabled=rule.enabled, conclusion=rule.conclusion)
+            })
         rule_env.update({
             rule_key: rule_id_map
         })
-        ee.on(f"{pre.get('thing_id')}/state", compute_rule)
+        ee.on(f"{pre.topic}/state", compute_rule)
+    logger.info(f"load rule env: {rule_env}")
+
 
 logger.info(f"load question env: {question_env}")
 logger.info(f"load rule env: {rule_env}")
@@ -148,6 +209,7 @@ logger.info(f"load rule env: {rule_env}")
 
 async def disable_rule(rule_key, rule_db_id):
     logger.info(rule_env)
+    logger.debug(rule_key)
     rule_bind = rule_env.get(rule_key)
     if rule_bind:
         if rule_bind.get(rule_db_id):

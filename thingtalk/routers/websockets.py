@@ -3,7 +3,6 @@ from typing import Tuple, Optional, Dict, Any
 from functools import partial
 
 from fastapi import APIRouter
-from fastapi import Depends
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from websockets import ConnectionClosedOK, ConnectionClosedError
@@ -28,13 +27,13 @@ class MsgType(str, Enum):
 
 
 class Msg(BaseModel):
-    type: MsgType = Field(alias="messageType")
+    messageType: MsgType
     data: Dict[str, Any]
 
 
 class TopicMsg(BaseModel):
-    topic: Optional[str] = Field(None, alias="thing_id")
-    type: MsgType = Field(alias="messageType")
+    topic: Optional[str] = None
+    messageType: MsgType
     data: Dict[str, Any]
 
 
@@ -69,18 +68,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.error(e.json())
                 await websocket.send_json(e.json(), mode="binary")
                 continue
-            msg_type = message.type
+            msg_type = message.messageType
 
             if msg_type == "subscribe":
                 for thing_id in message.data.get("thing_ids", []):
-                    logger.info(f"subscribe topic {thing_id}/state {thing_id}/event {thing_id}/error")
+                    logger.info(f"subscribe topic things/{thing_id}/state things/{thing_id}/event things/{thing_id}/error")
                     for topic_type in ["state", "event", "error"]:
-                        subscribe_topic = f"{thing_id}/{topic_type}"
+                        subscribe_topic = f"things/{thing_id}/{topic_type}"
                         ee.on(subscribe_topic, send)
                         subscribe_topics.append(subscribe_topic)
                     subscribe_table.update({id(websocket): subscribe_topics})
             else:
-                ee.emit(message.topic, receive_message)
+                ee.emit(message.topic, message)
 
     except (WebSocketDisconnect, ConnectionClosedOK) as e:
         logger.info(f"websocket {id(websocket)} was closed with code {e}")
