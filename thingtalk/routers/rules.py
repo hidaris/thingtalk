@@ -1,3 +1,4 @@
+import os
 import uuid
 import typing
 
@@ -14,7 +15,10 @@ from ..rule_engine import load_rule, disable_rule, RuleInput, Rule
 
 router = APIRouter()
 
-db = TinyDB('/tmp/db.json')
+
+data_ref = os.environ.get("TINY_DB", '/data/db.json')
+# data_ref = os.environ.get("TINY_DB", '/tmp/db.json')
+db = TinyDB(data_ref)
 
 table = db.table("rules")
 

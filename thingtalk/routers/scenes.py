@@ -1,3 +1,4 @@
+import os
 import uuid
 import typing
 
@@ -15,7 +16,9 @@ from tinydb import TinyDB, Query
 
 router = APIRouter()
 
-db = TinyDB('/tmp/db.json')
+data_ref = os.environ.get("TINY_DB", '/data/db.json')
+# data_ref = os.environ.get("TINY_DB", '/tmp/db.json')
+db = TinyDB(data_ref)
 
 table = db.table("scenes")
 
