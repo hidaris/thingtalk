@@ -61,7 +61,7 @@ async def update_rule(rule_id: str, rule_data: dict):
 
     if rule:
         for pre in rule.get("premise"):
-            await disable_rule(f"things_{pre.get('thing_id')}_{pre.get('name')}_{pre.get('value')}", rule_id)
+            await disable_rule(f"things_{pre.get('topic').split('/')[1]}_{pre.get('name')}_{pre.get('value')}", rule_id)
 
     doc_ids = table.update(rule_data, RuleModel.id == rule_id)
     if doc_ids:

@@ -73,6 +73,7 @@ class And:
             logger.debug(_res)
             ans = ans and _res
         if ans:
+            # logger.debug(self.conclusion)
             for conclusion in self.conclusion:
                 ee.emit(conclusion.topic, conclusion)
             for question_key, should_value in tuple(self.questions.items()):
@@ -144,7 +145,6 @@ async def compute_rule(msg):
             # question_env[question_key] = str(value)
             # logger.debug(f"new question table {question_env}")
             # if rule_env.get(rule_key):
-            logger.info(f"compute rule: key {rule_key}")
             for rule_id, rule in tuple(rule_env.get(rule_key, {}).items()):
                 logger.info(f"compute rule: key {rule_key} enabled {rule.enabled}")
                 if rule.enabled:
@@ -196,6 +196,7 @@ async def load_rule(rule: Rule):
             rule_id_map.update({
                 rule.id: Or(questions, enabled=rule.enabled, conclusion=rule.conclusion)
             })
+        logger.info(f"add rule: key {rule_key}")
         rule_env.update({
             rule_key: rule_id_map
         })
