@@ -559,6 +559,7 @@ class Server(Thing):
                 metadata={
                     "@type": "ServerStateProperty",
                     "title": "State",
+                    "display_name": "state",
                     "type": "string",
                     "enum": ["ON", "OFF", "REBOOT"],
                     "description": "state of thingtalk server",

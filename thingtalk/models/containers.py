@@ -57,11 +57,11 @@ class MultipleThings:
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
 
-        await self.server.add_event(ThingPairedEvent({
-            '@type': list(thing._type),
-            'id': thing.id,
-            'title': thing.title
-        }))
+        # await self.server.add_event(ThingPairedEvent({
+        #     '@type': list(thing._type),
+        #     'id': thing.id,
+        #     'title': thing.title
+        # }))
 
     async def remove_thing(self, thing_id):
         # 来自 zigbee2mqtt 的 left_network 事件
