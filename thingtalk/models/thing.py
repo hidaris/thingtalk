@@ -7,7 +7,9 @@ from jsonschema.exceptions import ValidationError
 
 from loguru import logger
 
-from .event import ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
+from .event import (
+    ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent, ThingPairFailedEvent
+)
 from .value import Value
 from .property import Property
 from .errors import PropertyError
@@ -527,7 +529,6 @@ class Thing:
             "messageType": "event",
             "data": await event.as_event_description(),
         }
-        logger.debug(message)
         ee.emit(f"things/{self.id}/event", message)
 
     async def add_owner(self, owner: str):
@@ -568,5 +569,5 @@ class Server(Thing):
         )
 
         self.add_available_events([
-            ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent
+            ThingPairingEvent, ThingPairedEvent, ThingRemovedEvent, ThingPairFailedEvent
         ])

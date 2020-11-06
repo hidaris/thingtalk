@@ -108,9 +108,15 @@ class ThingRemovedEvent(Event):
     schema = {
         "description": "device removed event",
         "type": "object",
-        "required": ["id", ],
+        "required": ["@type", "id", "title"],
         "properties": {
+            "@type": {
+                "type": "array",
+            },
             "id": {
+                "type": "string",
+            },
+            "title": {
                 "type": "string",
             },
         },
