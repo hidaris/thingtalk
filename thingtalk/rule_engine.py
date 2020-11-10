@@ -7,9 +7,9 @@ from pydantic import BaseModel, constr
 
 
 class PremiseType(str, Enum):
-    psingleton: str = "Singleton"
-    pand: str = "And"
-    por: str = "Or"
+    _singleton: str = "Singleton"
+    _and: str = "And"
+    _or: str = "Or"
 
 
 class ThingPremise(BaseModel):

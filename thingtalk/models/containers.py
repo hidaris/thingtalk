@@ -72,5 +72,7 @@ class MultipleThings:
             del self.things[thing_id]
 
             await self.server.add_event(ThingRemovedEvent({
-                'id': thing_id,
+                '@type': list(thing._type),
+                'id': thing.id,
+                'title': thing.title
             }))
