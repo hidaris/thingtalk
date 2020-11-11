@@ -3,6 +3,7 @@
 *.log
 tmp/
 
+*.state
 *.egg-info/
 .pytest_cache/
 build/
