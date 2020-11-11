@@ -52,6 +52,7 @@ class Light(Thing):
             "urn:dev:ops:my-lamp-1234",
             "My Lamp",
         )
+        self.set_href_prefix(f"/things/{self.id}")
 
         self.add_property(
             Property(
@@ -92,5 +93,4 @@ class Light(Thing):
 
 
 light = Light()
-light.set_href_prefix(f"/things/{light.id}")
 app.state.things.things.update({light.id: light})

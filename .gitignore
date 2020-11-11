@@ -4,6 +4,7 @@
 tmp/
 
 *.egg-info/
+.pytest_cache/
 build/
 dist/
 __pycache__

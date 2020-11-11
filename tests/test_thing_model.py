@@ -3,7 +3,7 @@ import re
 import socket
 import time
 from fastapi.testclient import TestClient
-from ..example.test import app
+from ..example.test_light import app
 
 _TIME_REGEX = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
 _PROTO = "http"
@@ -357,13 +357,22 @@ def test_actions():
 
 def test_websocket():
     # Test setting property through websocket
-    global ws_href
+    ws_href = "ws://localhost:8000/channel"
     if _AUTHORIZATION_HEADER is not None:
         ws_href += "?jwt=" + _AUTHORIZATION_HEADER.split(" ")[1]
     with client.websocket_connect(ws_href) as websocket:
-        websocket.receive_json(mode='binary')
-        websocket.send_json({"messageType": "setProperty", "data": {"brightness": 10, }})
+        websocket.send_json({
+            "messageType": "subscribe",
+            "data": {
+                "thing_ids": ["urn:dev:ops:my-lamp-1234"]
+            }})
+        websocket.send_json({
+            "topic": "things/urn:dev:ops:my-lamp-1234",
+            "messageType": "setProperty",
+            "data": {"brightness": 10, }
+        })
         message = websocket.receive_json(mode='binary')
+        assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "propertyStatus"
         assert message["data"]["brightness"] == 10
         code, body = http_request("GET", "/properties/brightness")
@@ -373,6 +382,7 @@ def test_websocket():
         # Test requesting action through websocket
         websocket.send_json(
             {
+                "topic": "things/urn:dev:ops:my-lamp-1234",
                 "messageType": "requestAction",
                 "data": {"fade": {"input": {"brightness": 90, "duration": 1000, }, }, },
             }
@@ -385,13 +395,14 @@ def test_websocket():
                 continue
 
             break
-
+        assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
         assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
         assert message["data"]["fade"]["status"] == "created"
         message = websocket.receive_json(mode='binary')
+        assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
@@ -400,13 +411,16 @@ def test_websocket():
 
         # These may come out of order
         action_id = None
-        received = [False, False]
-        for _ in range(0, 2):
+        received = [False, False, False]
+        for _ in range(0, 3):
             message = websocket.receive_json(mode='binary')
+            if message["topic"] != "things/urn:dev:ops:my-lamp-1234":
+                continue
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 90
                 received[0] = True
+
             elif message["messageType"] == "actionStatus":
                 assert message["data"]["fade"]["input"]["brightness"] == 90
                 assert message["data"]["fade"]["input"]["duration"] == 1000
@@ -416,6 +430,13 @@ def test_websocket():
                 assert message["data"]["fade"]["status"] == "completed"
                 action_id = message["data"]["fade"]["href"].split("/")[-1]
                 received[1] = True
+            elif message["messageType"] == "event":
+                assert message["data"]["overheated"]["data"] == 102
+                assert (
+                        re.match(_TIME_REGEX, message["data"]["overheated"]["timestamp"])
+                        is not None
+                )
+                received[2] = True
             else:
                 raise ValueError("Wrong message: {}".format(message["messageType"]))
 
@@ -449,17 +470,13 @@ def test_websocket():
         assert body[2]["overheated"]["data"] == 102
         assert re.match(_TIME_REGEX, body[2]["overheated"]["timestamp"]) is not None
 
-        # Test event subscription through websocket
-        websocket.send_json(
-            {"messageType": "addEventSubscription", "data": {"overheated": {}, }}
-        )
-        websocket.send_json(
-            {
-                "messageType": "requestAction",
-                "data": {"fade": {"input": {"brightness": 100, "duration": 500, }, }, },
-            }
-        )
+        websocket.send_json({
+            "topic": "things/urn:dev:ops:my-lamp-1234",
+            "messageType": "requestAction",
+            "data": {"fade": {"input": {"brightness": 100, "duration": 500, }, }, },
+        })
         message = websocket.receive_json(mode='binary')
+        assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
@@ -467,6 +484,7 @@ def test_websocket():
         assert message["data"]["fade"]["status"] == "created"
         assert re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
         message = websocket.receive_json(mode='binary')
+        assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
@@ -478,6 +496,8 @@ def test_websocket():
         received = [False, False, False]
         for _ in range(0, 3):
             message = websocket.receive_json(mode='binary')
+            if message["topic"] != "things/urn:dev:ops:my-lamp-1234":
+                continue
 
             if message["messageType"] == "propertyStatus":
                 assert message["data"]["brightness"] == 100
