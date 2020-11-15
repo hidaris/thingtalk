@@ -36,6 +36,7 @@ ifaddr = "^0.1.7"
 zeroconf = "^0.28.2"
 loguru = "^0.5.2"
 tinydb = "^4.2.0"
+asyncio-mqtt = "^0.8.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0"

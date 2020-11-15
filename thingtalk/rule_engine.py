@@ -5,6 +5,8 @@ from enum import Enum
 from loguru import logger
 from pydantic import BaseModel, constr
 
+from .dependencies import ee
+
 
 class PremiseType(str, Enum):
     _singleton: str = "Singleton"
@@ -131,8 +133,6 @@ question_env = {}
 #                  "things_xxxx_brightness": {"op": "lt", "value": 100}}, enabled=True)
 # },
 rule_env = {}
-
-from .dependencies import ee
 
 
 async def compute_rule(msg):
