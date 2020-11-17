@@ -20,8 +20,3 @@ async def check_property_and_get_thing(property_name: str, thing=Depends(get_thi
     if not await thing.has_property(property_name):
         raise HTTPException(status_code=404)
     return thing
-
-
-from pyee import AsyncIOEventEmitter as EventEmitter
-
-ee = EventEmitter()

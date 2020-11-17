@@ -5,7 +5,7 @@ from enum import Enum
 from loguru import logger
 from pydantic import BaseModel, constr
 
-from .dependencies import ee
+from .toolkits.event_bus import ee
 
 
 class PremiseType(str, Enum):
