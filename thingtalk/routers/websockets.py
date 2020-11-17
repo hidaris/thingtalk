@@ -9,7 +9,7 @@ from websockets import ConnectionClosedOK, ConnectionClosedError
 from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
-from ..dependencies import ee
+from ..toolkits.event_bus import ee
 
 
 async def perform_action(action):

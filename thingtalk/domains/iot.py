@@ -1,7 +1,7 @@
 from loguru import logger
 
 from ..models.thing import Thing
-from ..dependencies import ee
+from ..toolkits.event_bus import ee
 
 
 class Device(Thing):

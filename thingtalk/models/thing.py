@@ -14,7 +14,7 @@ from .value import Value
 from .property import Property
 from .errors import PropertyError
 
-from ..dependencies import ee
+from ..toolkits.event_bus import ee
 from ..routers.websockets import TopicMsg
 
 
