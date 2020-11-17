@@ -8,10 +8,11 @@ from loguru import logger
 from pydantic import ValidationError, BaseModel, constr
 
 from fastapi import Depends, APIRouter
-from fastapi.exceptions import HTTPException
 from fastapi.responses import UJSONResponse
 
 from tinydb import TinyDB, Query
+
+from ..toolkits.event_bus import ee
 
 
 router = APIRouter()
@@ -115,9 +116,6 @@ async def update_scene(scene_id: str, scene_data: dict):
         rule = table.get(SceneModel.id == scene_id)
 
     return UJSONResponse(rule)
-
-
-from ..dependencies import ee
 
 
 @router.post("/scenes/{scene_id}")
