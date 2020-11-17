@@ -2,6 +2,7 @@ name: Test
 
 on:
   push:
+    branch: master
   pull_request:
     types: [opened, synchronize]
 
