@@ -15,7 +15,7 @@ from .property import Property
 from .errors import PropertyError
 
 from ..toolkits.event_bus import ee
-from ..routers.websockets import TopicMsg
+from ..schema import InputMsg, OutMsg
 
 
 async def perform_action(action):
@@ -71,7 +71,7 @@ class Thing:
             logger.info(f"remove topic {topic}'s listener dispatch")
             ee.remove_listener(topic, self.dispatch)
 
-    async def dispatch(self, message: TopicMsg):
+    async def dispatch(self, message: InputMsg):
         logger.debug(f"dispatch {message}")
         msg_type = message.messageType
 
@@ -479,7 +479,11 @@ class Thing:
             "data": data
         }
         logger.info(message)
-        ee.emit(f"things/{self.id}/state", message)
+        try:
+            message = OutMsg(**message)
+            ee.emit(f"things/{self.id}/state", message)
+        except ValidationError as e:
+            logger.error(str(e))
 
     async def error_notify(self, error_, request=None):
         """
@@ -494,7 +498,11 @@ class Thing:
         if request:
             message.update({"request": request})
 
-        ee.emit(f"things/{self.id}/error", message)
+        try:
+            message = OutMsg(**message)
+            ee.emit(f"things/{self.id}/error", message)
+        except ValidationError as e:
+            logger.error(str(e))
 
     async def property_action(self, property_):
         """
@@ -513,7 +521,11 @@ class Thing:
             "messageType": "actionStatus",
             "data": await action.as_action_description(),
         }
-        ee.emit(f"things/{self.id}/state", message)
+        try:
+            message = OutMsg(**message)
+            ee.emit(f"things/{self.id}/state", message)
+        except ValidationError as e:
+            logger.error(str(e))
 
     async def event_notify(self, event):
         """
@@ -529,7 +541,11 @@ class Thing:
             "messageType": "event",
             "data": await event.as_event_description(),
         }
-        ee.emit(f"things/{self.id}/event", message)
+        try:
+            message = OutMsg(**message)
+            ee.emit(f"things/{self.id}/event", message)
+        except ValidationError as e:
+            logger.error(str(e))
 
     async def add_owner(self, owner: str):
         """

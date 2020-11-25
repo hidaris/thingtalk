@@ -131,7 +131,7 @@ async def run_scene(scene_id: str):
                 ee.emit(msg.topic, msg)
             message = {
                 "topic": f"scenes/{scene_id}",
-                "messageType": "SceneStatus",
+                "messageType": "sceneStatus",
                 "data": {}
             }
             logger.info(message)

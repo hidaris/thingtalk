@@ -1,5 +1,3 @@
-from enum import Enum
-from typing import Tuple, Optional, Dict, Any
 from functools import partial
 
 from fastapi import APIRouter
@@ -7,9 +5,10 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from websockets import ConnectionClosedOK, ConnectionClosedError
 from loguru import logger
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 from ..toolkits.event_bus import ee
+from ..schema import InputMsg, OutMsg
 
 
 async def perform_action(action):
@@ -20,27 +19,10 @@ async def perform_action(action):
 router = APIRouter()
 
 
-class MsgType(str, Enum):
-    subscribe = 'subscribe'
-    set_property = 'setProperty'
-    request_action = 'requestAction'
-
-
-class Msg(BaseModel):
-    messageType: MsgType
-    data: Dict[str, Any]
-
-
-class TopicMsg(BaseModel):
-    topic: Optional[str] = None
-    messageType: MsgType
-    data: Dict[str, Any]
-
-
-async def send_data(websocket: WebSocket, data):
+async def send_data(websocket: WebSocket, data: OutMsg):
     if websocket.application_state == WebSocketState.CONNECTED:
         try:
-            await websocket.send_json(data, mode='binary')
+            await websocket.send_json(data.dict(), mode='binary')
         except (WebSocketDisconnect, ConnectionClosedOK, ConnectionClosedError) as e:
             logger.debug(e)
     else:
@@ -63,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.info(f"websocket {id(websocket)} receive message {receive_message}")
 
             try:
-                message = TopicMsg(**receive_message)
+                message = InputMsg(**receive_message)
             except ValidationError as e:
                 logger.error(e.json())
                 await websocket.send_json(e.json(), mode="binary")

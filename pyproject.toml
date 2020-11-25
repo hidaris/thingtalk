@@ -38,7 +38,13 @@ zeroconf = "^0.28.2"
 loguru = "^0.5.2"
 tinydb = "^4.2.0"
 asyncio-mqtt = "^0.8.0"
+mkdocs-material = { version = "^6.1.6", optional = true }
+async-cron = "^1.6.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0"
+pytest-asyncio = "^0.14.0"
 requests = "^2.24.0"
+
+[tool.poetry.extras]
+docs = ["mkdocs-material"]
