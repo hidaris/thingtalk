@@ -21,6 +21,7 @@ class OutputMsgType(str, Enum):
     property_status = 'propertyStatus'
     action_status = 'actionStatus'
     scene_status = 'sceneStatus'
+    cron_status = 'cronStatus'
     error = 'error'
     event = 'event'
 

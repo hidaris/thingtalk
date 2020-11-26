@@ -38,6 +38,12 @@ class ScenePremise(BaseModel):
     data: typing.Dict[str, typing.Any]
 
 
+class CronPremise(BaseModel):
+    topic: constr(regex=r'^cron\/[0-9a-zA-Z\_\-\:]+$')
+    messageType: str
+    data: typing.Dict[str, typing.Any]
+
+
 class Conclusion(BaseModel):
     topic: constr(regex=r'^things|scenes\/[0-9a-zA-Z\_\-\:]+$')
     messageType: str
@@ -48,7 +54,7 @@ class RuleInput(BaseModel):
     enabled: bool
     name: str
     premise_type: PremiseType
-    premise: typing.List[typing.Union[ThingPremise, ScenePremise]]
+    premise: typing.List[typing.Union[ThingPremise, ScenePremise, CronPremise]]
     conclusion: typing.List[Conclusion]
 
 
@@ -130,6 +136,7 @@ class RuleComputeVisitor(OperationFunctor):
                 _res = self._question_env[question_key] < question.value
             elif question.op in ["run/scene", "run/cron"]:
                 _res = self._question_env[question_key] is True
+                logger.debug(_res)
             else:
                 _res = False
             ans = ans and _res
@@ -173,7 +180,7 @@ def generate_scenes_id(topic: str):
 
 
 def generate_cron_id(topic: str):
-    return f"cron_{topic}_{hex(uuid.uuid4())}"
+    return f"cron/{uuid.uuid4().hex}"
 
 
 def generate_rule_id(topic: str, property_name: str, property_value: typing.Any):
@@ -217,10 +224,14 @@ class RuleEngine:
                 if rule.enabled:
                     await RuleComputeVisitor(self.question_env).visit(rule)
 
-        if msg.messageType == "cronJob":
-            rule_id = generate_cron_id(msg.topic)
-            question_id = generate_cron_id(msg.topic)
+        if msg.messageType == "cronStatus":
+            rule_id = msg.topic
+            question_id = msg.topic
+            logger.debug(question_id)
             self.update_question_env(question_id, True)
+            logger.debug(self.rule_env)
+            logger.debug(self.question_env)
+            logger.debug(tuple(self.rule_env.get(rule_id, {}).items()))
             for rule_id, rule in tuple(self.rule_env.get(rule_id, {}).items()):
                 logger.info(f"compute rule: key {rule_id} enabled {rule.enabled}")
                 if rule.enabled:
@@ -255,15 +266,36 @@ class RuleEngine:
                     questions.update({question_key: question})
                     self.update_question_env(question_key, None)
 
-                    async def post2re(*args, **kwargs):
-                        print(args, kwargs)
+                    async def post2re():
+                        message = {
+                            "topic": question_key,
+                            "messageType": "cronStatus",
+                            "data": {}
+                        }
+                        from .schema import InputMsg, OutMsg
+                        message = OutMsg(**message)
+                        ee.emit(f"{question_key}/state", message)
                     if pre.messageType == "everyday":
-                        job = CronJob(name='monthday').every().day.at("11:22").go(post2re, (5), age=99)
+                        job = CronJob(name=question_key).every().day.at("11:22").go(post2re)
                         msh.add_job(job)
-                    elif pre.messageType == "everytime":
-                        job = CronJob(name='test', run_total=3).every(
-                            5).second.go(post2re, (1, 2, 3), name=123)
+                    elif pre.messageType == "interval":
+                        job = CronJob(name=question_key).every(
+                            pre.data.get("second")).second.go(post2re)
                         msh.add_job(job)
+                    elif pre.messageType == "date":
+                        job = CronJob(name='exact', tolerance=100).at("2019-01-15 16:12").go(post2re)
+                        msh.add_job(job)
+                    elif pre.messageType == "weekday":
+                        time = pre.data.get("time")
+                        for i in range(0, 5):
+                            job = CronJob(name='weekday').weekday(i).at(time).go(post2re)
+                            msh.add_job(job)
+                    elif pre.messageType == "weekend":
+                        time = pre.data.get("time")
+                        for i in range(5, 7):
+                            job = CronJob(name='weekend').weekday(i).at(time).go(post2re)
+                            msh.add_job(job)
+                    ee.on(f"{question_key}/state", self.compute_rule)
                 else:
                     raise Exception("不会执行这里")
             except ValidationError as e:
@@ -274,7 +306,7 @@ class RuleEngine:
                 rule_id = generate_rule_id(pre.topic, pre.name, pre.value)
             elif "scenes" in pre.topic:
                 rule_id = generate_scenes_id(pre.topic)
-            elif "cron" in pre.topic:
+            elif pre.topic == "cron/test":
                 rule_id = cron_keys.get(pre.topic)
             rule_id_map = self.rule_env.get(rule_id, {})
             logger.debug(rule_id_map)
@@ -287,10 +319,15 @@ class RuleEngine:
                     rule.id: Or(questions, enabled=rule.enabled, conclusion=rule.conclusion)
                 })
             logger.info(f"add rule: key {rule_id}")
+            logger.debug({
+                rule_id: rule_id_map
+            })
             self.rule_env.update({
                 rule_id: rule_id_map
             })
-            ee.on(f"{pre.topic}/state", self.compute_rule)
+            logger.debug(self.rule_env)
+            if "things" in pre.topic or "scenes" in pre.topic:
+                ee.on(f"{pre.topic}/state", self.compute_rule)
         logger.info(f"load rule env: {self.rule_env}")
 
     async def disable_rule(self, rule_key, rule_db_id):

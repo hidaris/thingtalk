@@ -71,3 +71,33 @@ restapi.include_router(
 
 app.include_router(restapi)
 app.include_router(websockets.router)
+
+# import asyncio
+# from .rule_engine import RuleEngine, msh, Rule
+#
+#
+# @app.on_event("startup")
+# async def startup():
+#     asyncio.create_task(msh.start())
+#     re = RuleEngine()
+#     rule = Rule(**{
+#         "id": 1,
+#         "enabled": True,
+#         "name": "test",
+#         "premise_type": "Singleton",
+#         "premise": [
+#             {
+#                 "topic": "cron/test",
+#                 "messageType": "interval",
+#                 "data": {"second": 5}
+#             }
+#         ],
+#         "conclusion": [
+#             {
+#                 "topic": "things/urn:thingtalk:server",
+#                 "messageType": "setProperty",
+#                 "data": {"state": "ON"}
+#             }
+#         ]
+#     })
+#     await re.load_rule(rule)
