@@ -307,7 +307,7 @@ class RuleEngine:
             elif "scenes" in pre.topic:
                 rule_id = generate_scenes_id(pre.topic)
             elif "cron" in pre.topic:
-                rule_id = cron_keys.get(pre.topic)
+                rule_id = cron_keys.get(rule.id)
             rule_id_map = self.rule_env.get(rule_id, {})
             logger.debug(rule_id_map)
             if rule.premise_type in ["And", "Singleton"]:
