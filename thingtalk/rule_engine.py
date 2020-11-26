@@ -267,6 +267,7 @@ class RuleEngine:
                     self.update_question_env(question_key, None)
 
                     async def post2re():
+                        print(question_key)
                         message = {
                             "topic": question_key,
                             "messageType": "cronStatus",
@@ -283,17 +284,18 @@ class RuleEngine:
                             pre.data.get("second")).second.go(post2re)
                         msh.add_job(job)
                     elif pre.messageType == "date":
-                        job = CronJob(name='exact', tolerance=100).at("2019-01-15 16:12").go(post2re)
+                        job = CronJob(name=question_key, tolerance=100).at("2019-01-15 16:12").go(post2re)
                         msh.add_job(job)
                     elif pre.messageType == "weekday":
                         time = pre.data.get("time")
+                        logger.debug(time)
                         for i in range(0, 5):
-                            job = CronJob(name='weekday').weekday(i).at(time).go(post2re)
+                            job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
                     elif pre.messageType == "weekend":
                         time = pre.data.get("time")
                         for i in range(5, 7):
-                            job = CronJob(name='weekend').weekday(i).at(time).go(post2re)
+                            job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
                     ee.on(f"{question_key}/state", self.compute_rule)
                 else:
