@@ -261,7 +261,7 @@ class RuleEngine:
                     self.update_question_env(question_key, None)
                 elif "cron" in pre.topic:
                     question_key = generate_cron_id(pre.topic)
-                    cron_keys.update({pre.topic: question_key})
+                    cron_keys.update({rule.id: question_key})
                     question = Question(**{"op": "run/cron"})
                     questions.update({question_key: question})
                     self.update_question_env(question_key, None)
@@ -306,7 +306,7 @@ class RuleEngine:
                 rule_id = generate_rule_id(pre.topic, pre.name, pre.value)
             elif "scenes" in pre.topic:
                 rule_id = generate_scenes_id(pre.topic)
-            elif pre.topic == "cron/test":
+            elif "cron" in pre.topic:
                 rule_id = cron_keys.get(pre.topic)
             rule_id_map = self.rule_env.get(rule_id, {})
             logger.debug(rule_id_map)
