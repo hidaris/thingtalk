@@ -1,114 +1,86 @@
-import asyncio
-import typing
+import uuid
+import time
 
-from contextlib import AsyncExitStack
+import gmqtt
 
 from loguru import logger
-from asyncio_mqtt import Client, MqttError
 
 from .event_bus import ee
 
 
 class Mqtt:
-    def __init__(self, host="127.0.0.1", username=None, password=None,
-                 reconnect_interval=3, topic_filters=None):
-        self.host: str = host
-        self.username: str = username
-        self.password: str = password
-        self.reconnect_interval: int = reconnect_interval  # [seconds]
-        self.started: bool = False
-        self.client: typing.Optional[Client] = None
-        self.task: typing.Optional[asyncio.Task] = None
-        # You can create any number of topic filters
-        self.topic_filters: typing.Optional[typing.Tuple[str]] = topic_filters
+    # create client instance, kwargs (session expiry interval and maximum packet size)
+    # will be send as properties in connect packet
+    def __init__(self,
+                 broker_host,
+                 broker_port,
+                 token: str = '',
+                 username: str = '',
+                 password: str = ''):
+        self.sub_client = gmqtt.Client(f"sub_client:{uuid.uuid4().hex}",
+                                       session_expiry_interval=600,
+                                       maximum_packet_size=65535)
+        self.pub_client = gmqtt.Client(f"pub_client:{uuid.uuid4().hex}")
 
-    def startup(self):
-        logger.debug("mqtt service startup")
-        ee.on("mqtt", self.publish)
-        self.task = asyncio.create_task(self.connect())
+        self.assign_callbacks_to_client(self.sub_client)
+        self.assign_callbacks_to_client(self.pub_client)
 
-    def shutdown(self):
-        self.task.cancel()
-        self.client = None
-        ee.remove_listener("mqtt", self.publish)
-        logger.debug("mqtt service shutdown")
+        if token:
+            self.sub_client.set_auth_credentials(token, None)
+            self.pub_client.set_auth_credentials(token, None)
+        if username and password:
+            self.sub_client.set_auth_credentials(username, password)
+            self.pub_client.set_auth_credentials(username, password)
 
-    def set_filter_topics(self, topic_filters: typing.Tuple[str]):
-        self.topic_filters = topic_filters
-
-    async def mqtt_context_wrapper(self):
-        # We 💛 context managers. Let's create a stack to help
-        # us manage them.
-        async with AsyncExitStack() as stack:
-            # Keep track of the asyncio tasks that we create, so that
-            # we can cancel them on exit
-            tasks = set()
-            stack.push_async_callback(self.cancel_tasks, tasks)
-
-            # Connect to the MQTT broker
-            self.client = Client(self.host, username=self.username, password=self.password)
-            await stack.enter_async_context(self.client)
-
-            for topic_filter in self.topic_filters:
-                # Log all messages that matches the filter
-                manager = self.client.filtered_messages(topic_filter)
-                messages = await stack.enter_async_context(manager)
-                # template = f'[topic_filter="{topic_filter}"] {{}}'
-                task = asyncio.create_task(self.handle_msgs_wrapper(messages, topic_filter))
-                tasks.add(task)
-
-            # Messages that doesn't match a filter will get logged here
-            # messages = await stack.enter_async_context(client.unfiltered_messages())
-            # task = asyncio.create_task(handle_msgs(messages, "[unfiltered] {}"))
-            # tasks.add(task)
-
-            # Subscribe to topic(s)
-            # 🤔 Note that we subscribe *after* starting the message
-            # loggers. Otherwise, we may miss retained messages.
-            await self.client.subscribe("zigbee2mqtt/#")
-
-            # Wait for everything to complete (or fail due to, e.g., network
-            # errors)
-            await asyncio.gather(*tasks)
-
-    async def publish(self, topic, message):
-        # Publish a message
-        if self.client:
-            logger.info(f'[topic="{topic}"] Publishing message={message}')
-            await self.client.publish(topic, message, qos=1)
-        else:
-            logger.error("mqtt client was shutdown")
-
-    async def handle_msgs_wrapper(self, messages, _filter):
-        try:
-            await self.handle_msgs(messages, _filter)
-        except Exception as e:
-            logger.error(str(e))
-
-    async def handle_msgs(self, messages, _filter):
-        # 🤔 Note that we assume that the message paylod is an
-        # UTF8-encoded string (hence the `bytes.decode` call).
-        pass
-
-    async def cancel_tasks(self, tasks):
-        logger.info("cancel tasks")
-        for task in tasks:
-            if task.done():
-                continue
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        self.broker_host = broker_host
+        self.broker_port = broker_port
 
     async def connect(self):
-        # Run the advanced_example indefinitely. Reconnect automatically
-        # if the connection is lost.
-        while True:
-            try:
-                await self.mqtt_context_wrapper()
-            except MqttError as error:
-                self.client = None
-                logger.error(f'Error "{error}". Reconnecting in {self.reconnect_interval} seconds.')
-            finally:
-                await asyncio.sleep(self.reconnect_interval)
+        await self.sub_client.connect(self.broker_host, self.broker_port)
+        await self.pub_client.connect(self.broker_host, self.broker_port)
+
+    async def set_app(self, app):
+        await self.sub_client.set_app(app)
+        await self.pub_client.set_app(app)
+
+    # two overlapping subscriptions with different subscription identifiers
+
+    # this message received by sub_client will have two subscription identifiers
+    async def publish(self, topic, payload):
+        # just another way to publish same message
+        self.pub_client.publish(topic, payload, qos=1, content_type='json',
+                                message_expiry_interval=60, topic_alias=1, user_property=('time', str(time.time())))
+
+    async def disconnect(self):
+        await self.pub_client.disconnect()
+        await self.sub_client.disconnect(session_expiry_interval=0)
+
+    def assign_callbacks_to_client(self, client):
+        # helper function which sets up client's callbacks
+        client.on_connect = self.on_connect
+        client.on_message = self.on_message
+        client.on_disconnect = self.on_disconnect
+        client.on_subscribe = self.on_subscribe
+
+    def on_connect(self, client, flags, rc, properties):
+        logger.info(f"[CONNECTED {client._client_id}]")
+
+    async def on_message(self, client, topic, payload, qos, properties):
+        logger.info(
+            f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
+
+    def on_disconnect(self, client, packet, exc=None):
+        logger.info(f"[DISCONNECTED {client._client_id}]")
+
+    def on_subscribe(self, client, mid, qos, properties):
+        # in order to check if all the subscriptions were successful, we should first get all subscriptions with this
+        # particular mid (from one subscription request)
+        subscriptions = client.get_subscriptions_by_mid(mid)
+        for subscription, granted_qos in zip(subscriptions, qos):
+            # in case of bad suback code, we can resend  subscription
+            if granted_qos >= gmqtt.constants.SubAckReasonCode.UNSPECIFIED_ERROR.value:
+                logger.warning('[RETRYING SUB {}] mid {}, reason code: {}, properties {}'.format(
+                    client._client_id, mid, granted_qos, properties))
+                client.resubscribe(subscription)
+            logger.info('[SUBSCRIBED {}] mid {}, QOS: {}, properties {}'.format(
+                client._client_id, mid, granted_qos, properties))
