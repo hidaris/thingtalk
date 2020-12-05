@@ -35,10 +35,3 @@ class OutMsg(BaseModel):
 class Question(BaseModel):
     op: str
     value: typing.Optional[typing.Any] = None
-
-
-# class SceneQuestion(BaseModel):
-#     op: str
-
-
-# Question = typing.Union[PropertyQuestion, SceneQuestion]

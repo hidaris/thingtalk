@@ -4,7 +4,7 @@ import uuid
 from enum import Enum
 
 from async_cron.job import CronJob
-from async_cron.schedule import Scheduler
+
 from loguru import logger
 from pydantic import (
     BaseModel, constr, ValidationError,
@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from .toolkits.event_bus import ee
+from .toolkits.scheduler import Scheduler
 from .schema import OutMsg, Question
 
 
@@ -24,9 +25,14 @@ class PremiseType(str, Enum):
     _or: str = "Or"
 
 
+class ThingPremiseMessageType(str, Enum):
+    property_status = 'propertyStatus'
+    action_status = 'actionStatus'
+
+
 class ThingPremise(BaseModel):
     topic: constr(regex=r'^things\/[0-9a-zA-Z\_\-\:]+$')
-    messageType: str
+    messageType: ThingPremiseMessageType
     name: str
     op: str
     value: typing.Union[StrictInt, StrictBool, StrictFloat, StrictStr]
@@ -34,13 +40,13 @@ class ThingPremise(BaseModel):
 
 class ScenePremise(BaseModel):
     topic: constr(regex=r'^scenes\/[0-9a-zA-Z\_\-\:]+$')
-    messageType: str
+    messageType: str = 'sceneStatus'
     data: typing.Dict[str, typing.Any]
 
 
 class CronPremise(BaseModel):
     topic: constr(regex=r'^cron\/[0-9a-zA-Z\_\-\:]+$')
-    messageType: str
+    messageType: str = 'cronStatus'
     data: typing.Dict[str, typing.Any]
 
 
@@ -295,6 +301,12 @@ class RuleEngine:
                     elif pre.messageType == "weekend":
                         time = pre.data.get("time")
                         for i in range(5, 7):
+                            job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
+                            msh.add_job(job)
+                    elif pre.messageType == "custom":
+                        dates = pre.data.get("date")
+                        time = pre.data.get("time")
+                        for i in dates:
                             job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
                     ee.on(f"{question_key}/state", self.compute_rule)
