@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thingtalk"
-version = "0.7.4"
+version = "0.7.5"
 description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 authors = ["hidaris <zuocool@gmail.com>"]
 readme = "README.md"
