@@ -311,7 +311,7 @@ class RuleEngine:
                         dates = pre.data.get("date")
                         time = pre.data.get("time")
                         time_array = time.split(":")
-                         time = f"{time_array[0]}:{time_array[1]}"
+                        time = f"{time_array[0]}:{time_array[1]}"
                         for i in dates:
                             job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
