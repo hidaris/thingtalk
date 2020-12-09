@@ -203,6 +203,7 @@ class RuleEngine:
         #                  "things_xxxx_brightness": {"op": "lt", "value": 100}}, enabled=True)
         # },
         self.rule_env = {}
+        self.cron_keys = {}
 
     def __repr__(self):
         return f"RuleEngine({self.question_env}...)"
@@ -251,7 +252,6 @@ class RuleEngine:
 
     async def load_rule(self, rule: Rule):
         questions = {}
-        cron_keys = {}
         # 更新 questions，以及当前 rule 需要查询的 question_keys
         for pre in rule.premise:
             try:
@@ -267,7 +267,7 @@ class RuleEngine:
                     self.update_question_env(question_key, None)
                 elif "cron" in pre.topic:
                     question_key = generate_cron_id(pre.topic)
-                    cron_keys.update({rule.id: question_key})
+                    self.cron_keys.update({rule.id: question_key})
                     question = Question(**{"op": "run/cron"})
                     questions.update({question_key: question})
                     self.update_question_env(question_key, None)
@@ -283,7 +283,10 @@ class RuleEngine:
                         ee.emit(f"{question_key}/state", message)
 
                     if pre.messageType == "everyday":
-                        job = CronJob(name=question_key).every().day.at("11:22").go(post2re)
+                        time = pre.data.get("time")
+                        time_array = time.split(":")
+                        time = f"{time_array[0]}:{time_array[1]}"
+                        job = CronJob(name=question_key).every().day.at(time).go(post2re)
                         msh.add_job(job)
                     elif pre.messageType == "interval":
                         job = CronJob(name=question_key).every(
@@ -327,7 +330,7 @@ class RuleEngine:
             elif "scenes" in pre.topic:
                 rule_id = generate_scenes_id(pre.topic)
             elif "cron" in pre.topic:
-                rule_id = cron_keys.get(rule.id)
+                rule_id = self.cron_keys.get(rule.id)
             rule_id_map = self.rule_env.get(rule_id, {})
             logger.debug(rule_id_map)
             if rule.premise_type in ["And", "Singleton"]:
@@ -350,10 +353,16 @@ class RuleEngine:
                 ee.on(f"{pre.topic}/state", self.compute_rule)
         logger.info(f"load rule env: {self.rule_env}")
 
-    async def disable_rule(self, rule_key, rule_db_id):
+    async def disable_rule(self, pre, rule, rule_db_id):
         logger.info(self.rule_env)
-        logger.debug(rule_key)
-        rule_bind = self.rule_env.get(rule_key)
+        if "things" in pre.topic:
+            rule_id = generate_rule_id(pre.topic, pre.name, pre.value)
+        elif "scenes" in pre.topic:
+            rule_id = generate_scenes_id(pre.topic)
+        elif "cron" in pre.topic:
+            rule_id = self.cron_keys.get(rule.id)
+        logger.debug(rule_id)
+        rule_bind = self.rule_env.get(rule_id)
         if rule_bind:
             if rule_bind.get(rule_db_id):
                 del rule_bind[rule_db_id]
