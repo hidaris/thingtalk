@@ -233,11 +233,11 @@ class RuleEngine:
         if msg.messageType == "cronStatus":
             rule_id = msg.topic
             question_id = msg.topic
-            logger.debug(question_id)
+            # logger.debug(question_id)
             self.update_question_env(question_id, True)
-            logger.debug(self.rule_env)
-            logger.debug(self.question_env)
-            logger.debug(tuple(self.rule_env.get(rule_id, {}).items()))
+            # logger.debug(self.rule_env)
+            # logger.debug(self.question_env)
+            # logger.debug(tuple(self.rule_env.get(rule_id, {}).items()))
             for rule_id, rule in tuple(self.rule_env.get(rule_id, {}).items()):
                 logger.info(f"compute rule: key {rule_id} enabled {rule.enabled}")
                 if rule.enabled:
@@ -273,15 +273,15 @@ class RuleEngine:
                     self.update_question_env(question_key, None)
 
                     async def post2re():
-                        print(question_key)
                         message = {
                             "topic": question_key,
                             "messageType": "cronStatus",
                             "data": {}
                         }
-                        from .schema import InputMsg, OutMsg
+                        from .schema import OutMsg
                         message = OutMsg(**message)
                         ee.emit(f"{question_key}/state", message)
+
                     if pre.messageType == "everyday":
                         job = CronJob(name=question_key).every().day.at("11:22").go(post2re)
                         msh.add_job(job)
@@ -294,18 +294,24 @@ class RuleEngine:
                         msh.add_job(job)
                     elif pre.messageType == "weekday":
                         time = pre.data.get("time")
+                        time_array = time.split(":")
+                        time = f"{time_array[0]}:{time_array[1]}"
                         logger.debug(time)
                         for i in range(0, 5):
                             job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
                     elif pre.messageType == "weekend":
                         time = pre.data.get("time")
+                        time_array = time.split(":")
+                        time = f"{time_array[0]}:{time_array[1]}"
                         for i in range(5, 7):
                             job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
                     elif pre.messageType == "custom":
                         dates = pre.data.get("date")
                         time = pre.data.get("time")
+                        time_array = time.split(":")
+                         time = f"{time_array[0]}:{time_array[1]}"
                         for i in dates:
                             job = CronJob(name=question_key).weekday(i).at(time).go(post2re)
                             msh.add_job(job)
@@ -352,6 +358,3 @@ class RuleEngine:
             if rule_bind.get(rule_db_id):
                 del rule_bind[rule_db_id]
         logger.info(self.rule_env)
-
-# logger.info(f"load question env: {question_env}")
-# logger.info(f"load rule env: {rule_env}")
