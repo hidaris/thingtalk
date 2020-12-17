@@ -265,7 +265,7 @@ class RuleEngine:
                 rule_id = generate_rule_id(msg.topic, property_name, value)
                 question_key = generate_question_id(msg.topic, property_name)
                 self.update_question_env(question_key, value)
-                logger.debug(question_env)
+                # logger.debug(question_env)
                 await self.compute_rule(rule_id)
 
         if msg.messageType == "sceneStatus":
@@ -278,7 +278,7 @@ class RuleEngine:
             rule_id = msg.topic
             question_key = msg.topic
             self.update_question_env(question_key, True)
-            logger.debug(question_env)
+            # logger.debug(question_env)
             await self.compute_rule(rule_id)
 
     async def load_rules(self, rules: typing.List[typing.Optional[Rule]]):
@@ -307,7 +307,7 @@ class RuleEngine:
             return f"things_{topic_words[1]}_{pre.name}_{pre.value}"
         elif "scenes" in pre.topic:
             topic_words = pre.topic.split("/")
-            return f"scenes_{topic_words[1]}",
+            return f"scenes_{topic_words[1]}"
         elif "cron" in pre.topic:
             return f"cron_{rule_id}_{pre.messageType}_{pre.data.get('time')}"
 
@@ -347,7 +347,7 @@ class RuleEngine:
         logger.info(f"load rule env: {self.rule_env}")
 
     async def disable_rule(self, pre, rule):
-        logger.info(self.rule_env)
+        # logger.info(self.rule_env)
         rule_pk = rule.id.hex
         rule_id = self.generate_rule_id(pre, rule_pk)
         # if "things" in pre.topic:
@@ -358,12 +358,10 @@ class RuleEngine:
         #     logger.debug(f"cron keys {self.cron_keys}")
         #     logger.debug(rule.id.hex)
         #     rule_id = self.cron_keys.get(rule.id.hex)
-        logger.debug(rule_id)
+        logger.debug(f"disable rule {rule_id}")
         rule_map = self.rule_env.get(rule_id)
         if rule_map:
             if rule_map.get(rule_pk):
                 del rule_map[rule_pk]
-        logger.debug(msh.jobs)
         msh.del_job(rule_id)
-        logger.debug(msh.jobs)
-        logger.info(self.rule_env)
+        # logger.info(self.rule_env)
