@@ -23,7 +23,7 @@ async def get_actions(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     :param thing-- the thing this request is for
     :return UJSONResponse
     """
-    return UJSONResponse(await thing.get_action_descriptions())
+    return UJSONResponse(thing.get_action_descriptions())
 
 
 @router.post("/actions")
@@ -43,7 +43,7 @@ async def revoke_actions(
             input_ = action_params["input"]
         action = await thing.perform_action(action_name, input_)
         if action:
-            response.update(await action.as_action_description())
+            response.update(action.description)
 
             # Start the action
             asyncio.create_task(perform_action(action))
@@ -62,7 +62,7 @@ async def get_action(
     :return UJSONResponse
     """
     return UJSONResponse(
-        await thing.get_action_descriptions(action_name=action_name)
+        thing.get_action_descriptions(action_name=action_name)
     )
 
 
@@ -89,7 +89,7 @@ async def invoke_action(
 
         action = await thing.perform_action(name, input_)
         if action:
-            response.update(await action.as_action_description())
+            response.update(action.description)
 
             # Start the action
             asyncio.create_task(perform_action(action))
@@ -109,11 +109,11 @@ async def get_action_by_id(
     :param action_id -- the action ID from the URL path
     :return UJSONResponse
     """
-    action = await thing.get_action(action_name, action_id)
+    action = thing.get_action(action_name, action_id)
     if action is None:
         raise HTTPException(status_code=404)
 
-    return UJSONResponse(await action.as_action_description())
+    return UJSONResponse(action.description)
 
 
 @router.put("/actions/{action_name}/{action_id}")

@@ -39,8 +39,8 @@ class Fade(Action):
 
     async def perform_action(self):
         time.sleep(self.input["duration"] / 1000)
-        await self.thing.set_property("brightness", self.input["brightness"])
-        await self.thing.add_event(OverheatedEvent(102))
+        await self._thing.set_property("brightness", self.input["brightness"])
+        await self._thing.add_event(OverheatedEvent(102))
 
 
 class Light(Thing):
@@ -52,7 +52,7 @@ class Light(Thing):
             "urn:dev:ops:my-lamp-1234",
             "My Lamp",
         )
-        self.set_href_prefix(f"/things/{self.id}")
+        self.href_prefix = f"/things/{self.id}"
 
         self.add_property(
             Property(

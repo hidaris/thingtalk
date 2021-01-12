@@ -1,5 +1,7 @@
 """High-level Event base class implementation."""
 
+from functools import cached_property
+
 from ..utils import timestamp
 
 
@@ -16,43 +18,49 @@ class Event:
         name -- name of the event
         data -- data associated with the event
         """
-        self.thing = None
-        self.data = data
-        self.time = timestamp()
+        self._thing = None
+        self._data = data
+        self._time = timestamp()
 
-    async def as_event_description(self):
+    @cached_property
+    def description(self):
         """
         Get the event description.
         Returns a dictionary describing the event.
         """
         description = {
-            self.title: {"timestamp": self.time, },
+            self.title: {"timestamp": self._time, },
         }
 
-        if self.data is not None:
-            description[self.title]["data"] = self.data
+        if self._data is not None:
+            description[self.title]["data"] = self._data
 
         return description
 
-    async def get_thing(self):
+    @property
+    def thing(self):
         """Get the thing associated with this event."""
-        return self.thing
+        return self._thing
 
-    async def set_thing(self, thing):
+    @thing.setter
+    def thing(self, thing):
         """Set the thing associated with this event."""
-        self.thing = thing
+        self._thing = thing
 
-    async def get_name(self):
+    @property
+    def name(self):
         """Get the event's name."""
         return self.title
 
-    async def get_data(self):
+    @property
+    def data(self):
         """Get the event's data."""
-        return self.data
+        return self._data
 
-    async def get_time(self):
+    @property
+    def time(self):
         """Get the event's timestamp."""
-        return self.time
+        return self._time
 
 
 class ThingPairingEvent(Event):

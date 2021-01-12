@@ -1,5 +1,6 @@
 """High-level Action base class implementation."""
 
+from functools import cached_property
 import uuid
 
 from ..utils import timestamp
@@ -19,24 +20,25 @@ class Action:
         name -- name of the action
         input_ -- any action inputs
         """
-        self.id = id_
-        self.thing = thing
-        self.input = input_
-        self.href_prefix = ""
-        self.href = f"/actions/{self.title}/{self.id}"
-        self.status = "created"
-        self.time_requested = timestamp()
-        self.time_completed = None
+        self._id = id_
+        self._thing = thing
+        self._input = input_
+        self._href_prefix = ""
+        self._href = f"/actions/{self.title}/{self._id}"
+        self._status = "created"
+        self._time_requested = timestamp()
+        self._time_completed = None
         self.meta = None
 
-    async def as_action_description(self):
+    @cached_property
+    def description(self):
         """
         Get the action description.
         Returns a dictionary describing the action.
         """
         description = {
             self.title: {
-                "href": self.href_prefix + self.href,
+                "href": self.href,
                 "timeRequested": self.time_requested,
                 "status": self.status,
             },
@@ -50,44 +52,78 @@ class Action:
 
         return description
 
-    def set_href_prefix(self, prefix):
+    def clean_description_cache(self):
+        if self.__dict__.get("description"):
+            del self.__dict__["description"]
+
+    @property
+    def href_prefix(self):
+        return self._href_prefix
+
+    @href_prefix.setter
+    def href_prefix(self, prefix):
         """
         Set the prefix of any hrefs associated with this action.
         prefix -- the prefix
         """
-        self.href_prefix = prefix
+        self.clean_description_cache()
+        self._href_prefix = prefix
 
-    async def get_id(self):
+    @property
+    def id(self):
         """Get this action's ID."""
-        return self.id
+        return self._id
 
-    async def get_name(self):
+    @id.setter
+    def id(self, id):
+        self.clean_description_cache()
+        self._id = id
+
+    @property
+    def name(self):
         """Get this action's name."""
         return self.title
 
-    async def get_href(self):
+    @property
+    def href(self):
         """Get this action's href."""
-        return self.href_prefix + self.href
+        return self._href_prefix + self._href
 
-    async def get_status(self):
+    @property
+    def status(self):
         """Get this action's status."""
-        return self.status
+        return self._status
 
-    async def get_thing(self):
+    @status.setter
+    def status(self, status):
+        self.clean_description_cache()
+        self._status = status
+
+    @property
+    def thing(self):
         """Get the thing associated with this action."""
-        return self.thing
+        return self._thing
 
-    async def get_time_requested(self):
+    @property
+    def time_requested(self):
         """Get the time the action was requested."""
-        return self.time_requested
+        return self._time_requested
 
-    async def get_time_completed(self):
+    @property
+    def time_completed(self):
         """Get the time the action was completed."""
-        return self.time_completed
+        return self._time_completed
 
-    async def get_input(self):
+    @time_completed.setter
+    def time_completed(self, time):
+        """update the time completed."""
+        self.clean_description_cache()
+        self._time_completed = time
+
+    @property
+    def input(self):
         """Get the inputs for this action."""
-        return self.input
+        return self._input
 
     async def start(self):
         """Start performing the action."""

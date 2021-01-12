@@ -25,8 +25,7 @@ class Mqtt:
                  username: str = '',
                  password: str = ''):
         self.sub_client = Client(f"sub_client:{uuid.uuid4().hex}",
-                                 session_expiry_interval=600,
-                                 maximum_packet_size=65535)
+                                 session_expiry_interval=600)
         self.pub_client = Client(f"pub_client:{uuid.uuid4().hex}")
 
         self.assign_callbacks_to_client(self.sub_client)

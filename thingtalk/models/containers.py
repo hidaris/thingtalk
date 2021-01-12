@@ -12,15 +12,15 @@ class SingleThing:
         """
         self.thing = thing
 
-    async def get_thing(self, _=None):
+    def get_thing(self, _=None):
         """Get the thing at the given index."""
         return self.thing
 
-    async def get_things(self):
+    def get_things(self):
         """Get the list of things."""
         return [self.thing]
 
-    async def get_name(self):
+    def get_name(self):
         """Get the mDNS server name."""
         return self.thing.title
 
@@ -38,18 +38,18 @@ class MultipleThings:
         self.name = name
         self.server = self.things.get('urn:thingtalk:server')
 
-    async def get_thing(self, idx):
+    def get_thing(self, idx):
         """
         Get the thing at the given index.
         idx -- the index
         """
         return self.things.get(idx, None)
 
-    async def get_things(self):
+    def get_things(self):
         """Get the list of things."""
         return self.things.items()
 
-    async def get_name(self):
+    def get_name(self):
         """Get the mDNS server name."""
         return self.name
 

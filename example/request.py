@@ -17,9 +17,9 @@ class Request(Action):
     title = "request"
 
     async def perform_action(self):
-        time.sleep(self.input["duration"] / 1000)
-        await self.thing.set_property("brightness", self.input["brightness"])
-        await self.thing.add_event(OverheatedEvent(self.thing, 102))
+        time.sleep(self._input["duration"] / 1000)
+        await self._thing.set_property("brightness", self._input["brightness"])
+        await self._thing.add_event(OverheatedEvent(self._thing, 102))
 
 
 class HTTPRequester(Thing):

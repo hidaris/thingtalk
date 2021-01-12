@@ -14,7 +14,7 @@ async def get_events(thing: Thing = Depends(get_thing)) -> UJSONResponse:
     :param thing -- the thing this request is for
     :return UJSONResponse
     """
-    return UJSONResponse(await thing.get_event_descriptions())
+    return UJSONResponse(thing.get_event_descriptions())
 
 
 @router.get("/events/{event_name}")
@@ -25,4 +25,4 @@ async def get_event(event_name: str, thing: Thing = Depends(get_thing)) -> UJSON
     :param event_name -- name of the event from the URL path
     :return UJSONResponse
     """
-    return UJSONResponse(await thing.get_event_descriptions(event_name=event_name))
+    return UJSONResponse(thing.get_event_descriptions(event_name=event_name))

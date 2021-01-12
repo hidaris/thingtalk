@@ -76,7 +76,9 @@ def http_request(method, path, data=None):
         response = client.request(method, url, headers=headers, proxies=proxies)
     else:
         headers["Content-Type"] = "application/json"
-        response = client.request(method, url, json=data, headers=headers, proxies=proxies)
+        response = client.request(
+            method, url, json=data, headers=headers, proxies=proxies
+        )
 
     if response.content:
         if _DEBUG:
@@ -111,71 +113,71 @@ def test_thing_description():
     assert body["properties"]["on"]["description"] == "Whether the lamp is turned on"
     assert len(body["properties"]["on"]["links"]) == 1
     assert (
-            body["properties"]["on"]["links"][0]["href"] == _PATH_PREFIX + "/properties/on"
+        body["properties"]["on"]["links"][0]["href"] == _PATH_PREFIX + "/properties/on"
     )
     assert body["properties"]["brightness"]["@type"] == "BrightnessProperty"
     assert body["properties"]["brightness"]["title"] == "Brightness"
     assert body["properties"]["brightness"]["type"] == "integer"
     assert (
-            body["properties"]["brightness"]["description"]
-            == "The level of light from 0-100"
+        body["properties"]["brightness"]["description"]
+        == "The level of light from 0-100"
     )
     assert body["properties"]["brightness"]["minimum"] == 0
     assert body["properties"]["brightness"]["maximum"] == 100
     assert body["properties"]["brightness"]["unit"] == "percent"
     assert len(body["properties"]["brightness"]["links"]) == 1
     assert (
-            body["properties"]["brightness"]["links"][0]["href"]
-            == _PATH_PREFIX + "/properties/brightness"
+        body["properties"]["brightness"]["links"][0]["href"]
+        == _PATH_PREFIX + "/properties/brightness"
     )
 
     if not _SKIP_ACTIONS_EVENTS:
         assert body["actions"]["fade"]["title"] == "Fade"
         assert (
-                body["actions"]["fade"]["description"] == "Fade the lamp to a given level"
+            body["actions"]["fade"]["description"] == "Fade the lamp to a given level"
         )
         assert body["actions"]["fade"]["input"]["type"] == "object"
         assert (
-                body["actions"]["fade"]["input"]["properties"]["brightness"]["type"]
-                == "integer"
+            body["actions"]["fade"]["input"]["properties"]["brightness"]["type"]
+            == "integer"
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["brightness"]["minimum"] == 0
+            body["actions"]["fade"]["input"]["properties"]["brightness"]["minimum"] == 0
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["brightness"]["maximum"]
-                == 100
+            body["actions"]["fade"]["input"]["properties"]["brightness"]["maximum"]
+            == 100
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["brightness"]["unit"]
-                == "percent"
+            body["actions"]["fade"]["input"]["properties"]["brightness"]["unit"]
+            == "percent"
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["duration"]["type"]
-                == "integer"
+            body["actions"]["fade"]["input"]["properties"]["duration"]["type"]
+            == "integer"
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["duration"]["minimum"] == 1
+            body["actions"]["fade"]["input"]["properties"]["duration"]["minimum"] == 1
         )
         assert (
-                body["actions"]["fade"]["input"]["properties"]["duration"]["unit"]
-                == "milliseconds"
+            body["actions"]["fade"]["input"]["properties"]["duration"]["unit"]
+            == "milliseconds"
         )
         assert len(body["actions"]["fade"]["links"]) == 1
         assert (
-                body["actions"]["fade"]["links"][0]["href"]
-                == _PATH_PREFIX + "/actions/fade"
+            body["actions"]["fade"]["links"][0]["href"]
+            == _PATH_PREFIX + "/actions/fade"
         )
         assert body["events"]["overheated"]["type"] == "number"
         assert body["events"]["overheated"]["unit"] == "degree celsius"
         assert (
-                body["events"]["overheated"]["description"]
-                == "The lamp has exceeded its safe operating temperature"
+            body["events"]["overheated"]["description"]
+            == "The lamp has exceeded its safe operating temperature"
         )
         assert len(body["events"]["overheated"]["links"]) == 1
         assert (
-                body["events"]["overheated"]["links"][0]["href"]
-                == _PATH_PREFIX + "/events/overheated"
+            body["events"]["overheated"]["links"][0]["href"]
+            == _PATH_PREFIX + "/events/overheated"
         )
 
     if _SKIP_ACTIONS_EVENTS:
@@ -260,7 +262,14 @@ def test_actions():
     code, body = http_request(
         "POST",
         "/actions",
-        {"fade": {"input": {"brightness": 50, "duration": 2000, }, }, },
+        {
+            "fade": {
+                "input": {
+                    "brightness": 50,
+                    "duration": 2000,
+                },
+            },
+        },
     )
     assert code == 201
     assert body["fade"]["input"]["brightness"] == 50
@@ -316,7 +325,14 @@ def test_actions():
     code, body = http_request(
         "POST",
         "/actions/fade",
-        {"fade": {"input": {"brightness": 50, "duration": 2000, }, }, },
+        {
+            "fade": {
+                "input": {
+                    "brightness": 50,
+                    "duration": 2000,
+                },
+            },
+        },
     )
     assert code == 201
     assert body["fade"]["input"]["brightness"] == 50
@@ -361,17 +377,22 @@ def test_websocket():
     if _AUTHORIZATION_HEADER is not None:
         ws_href += "?jwt=" + _AUTHORIZATION_HEADER.split(" ")[1]
     with client.websocket_connect(ws_href) as websocket:
-        websocket.send_json({
-            "messageType": "subscribe",
-            "data": {
-                "thing_ids": ["urn:dev:ops:my-lamp-1234"]
-            }})
-        websocket.send_json({
-            "topic": "things/urn:dev:ops:my-lamp-1234",
-            "messageType": "setProperty",
-            "data": {"brightness": 10, }
-        })
-        message = websocket.receive_json(mode='binary')
+        websocket.send_json(
+            {
+                "messageType": "subscribe",
+                "data": {"thing_ids": ["urn:dev:ops:my-lamp-1234"]},
+            }
+        )
+        websocket.send_json(
+            {
+                "topic": "things/urn:dev:ops:my-lamp-1234",
+                "messageType": "setProperty",
+                "data": {
+                    "brightness": 10,
+                },
+            }
+        )
+        message = websocket.receive_json(mode="binary")
         assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "propertyStatus"
         assert message["data"]["brightness"] == 10
@@ -384,13 +405,20 @@ def test_websocket():
             {
                 "topic": "things/urn:dev:ops:my-lamp-1234",
                 "messageType": "requestAction",
-                "data": {"fade": {"input": {"brightness": 90, "duration": 1000, }, }, },
+                "data": {
+                    "fade": {
+                        "input": {
+                            "brightness": 90,
+                            "duration": 1000,
+                        },
+                    },
+                },
             }
         )
 
         # Handle any extra propertyStatus message first
         while True:
-            message = websocket.receive_json(mode='binary')
+            message = websocket.receive_json(mode="binary")
             if message["messageType"] == "propertyStatus":
                 continue
 
@@ -399,21 +427,25 @@ def test_websocket():
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
-        assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
+        assert message["data"]["fade"]["href"].startswith(
+            _PATH_PREFIX + "/actions/fade/"
+        )
         assert message["data"]["fade"]["status"] == "created"
-        message = websocket.receive_json(mode='binary')
+        message = websocket.receive_json(mode="binary")
         assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 90
         assert message["data"]["fade"]["input"]["duration"] == 1000
-        assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
+        assert message["data"]["fade"]["href"].startswith(
+            _PATH_PREFIX + "/actions/fade/"
+        )
         assert message["data"]["fade"]["status"] == "pending"
 
         # These may come out of order
         action_id = None
         received = [False, False, False]
         for _ in range(0, 3):
-            message = websocket.receive_json(mode='binary')
+            message = websocket.receive_json(mode="binary")
             if message["topic"] != "things/urn:dev:ops:my-lamp-1234":
                 continue
 
@@ -433,8 +465,8 @@ def test_websocket():
             elif message["messageType"] == "event":
                 assert message["data"]["overheated"]["data"] == 102
                 assert (
-                        re.match(_TIME_REGEX, message["data"]["overheated"]["timestamp"])
-                        is not None
+                    re.match(_TIME_REGEX, message["data"]["overheated"]["timestamp"])
+                    is not None
                 )
                 received[2] = True
             else:
@@ -470,32 +502,49 @@ def test_websocket():
         assert body[2]["overheated"]["data"] == 102
         assert re.match(_TIME_REGEX, body[2]["overheated"]["timestamp"]) is not None
 
-        websocket.send_json({
-            "topic": "things/urn:dev:ops:my-lamp-1234",
-            "messageType": "requestAction",
-            "data": {"fade": {"input": {"brightness": 100, "duration": 500, }, }, },
-        })
-        message = websocket.receive_json(mode='binary')
+        websocket.send_json(
+            {
+                "topic": "things/urn:dev:ops:my-lamp-1234",
+                "messageType": "requestAction",
+                "data": {
+                    "fade": {
+                        "input": {
+                            "brightness": 100,
+                            "duration": 500,
+                        },
+                    },
+                },
+            }
+        )
+        message = websocket.receive_json(mode="binary")
         assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
-        assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
+        assert message["data"]["fade"]["href"].startswith(
+            _PATH_PREFIX + "/actions/fade/"
+        )
         assert message["data"]["fade"]["status"] == "created"
-        assert re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
-        message = websocket.receive_json(mode='binary')
+        assert (
+            re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
+        )
+        message = websocket.receive_json(mode="binary")
         assert message["topic"] == "things/urn:dev:ops:my-lamp-1234"
         assert message["messageType"] == "actionStatus"
         assert message["data"]["fade"]["input"]["brightness"] == 100
         assert message["data"]["fade"]["input"]["duration"] == 500
-        assert message["data"]["fade"]["href"].startswith(_PATH_PREFIX + "/actions/fade/")
+        assert message["data"]["fade"]["href"].startswith(
+            _PATH_PREFIX + "/actions/fade/"
+        )
         assert message["data"]["fade"]["status"] == "pending"
-        assert re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
+        assert (
+            re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"]) is not None
+        )
 
         # These may come out of order
         received = [False, False, False]
         for _ in range(0, 3):
-            message = websocket.receive_json(mode='binary')
+            message = websocket.receive_json(mode="binary")
             if message["topic"] != "things/urn:dev:ops:my-lamp-1234":
                 continue
 
@@ -505,8 +554,8 @@ def test_websocket():
             elif message["messageType"] == "event":
                 assert message["data"]["overheated"]["data"] == 102
                 assert (
-                        re.match(_TIME_REGEX, message["data"]["overheated"]["timestamp"])
-                        is not None
+                    re.match(_TIME_REGEX, message["data"]["overheated"]["timestamp"])
+                    is not None
                 )
                 received[1] = True
             elif message["messageType"] == "actionStatus":
@@ -517,12 +566,12 @@ def test_websocket():
                 )
                 assert message["data"]["fade"]["status"] == "completed"
                 assert (
-                        re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"])
-                        is not None
+                    re.match(_TIME_REGEX, message["data"]["fade"]["timeRequested"])
+                    is not None
                 )
                 assert (
-                        re.match(_TIME_REGEX, message["data"]["fade"]["timeCompleted"])
-                        is not None
+                    re.match(_TIME_REGEX, message["data"]["fade"]["timeCompleted"])
+                    is not None
                 )
                 received[2] = True
 

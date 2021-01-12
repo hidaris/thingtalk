@@ -10,13 +10,13 @@ async def get_thing(request: Request, thing_id: str):
     Returns the thing, or None if not found.
     """
     things = request.app.state.things
-    thing = await things.get_thing(thing_id)
+    thing = things.get_thing(thing_id)
     if thing is None:
         raise HTTPException(status_code=404)
     return thing
 
 
 async def check_property_and_get_thing(property_name: str, thing=Depends(get_thing)):
-    if not await thing.has_property(property_name):
+    if not thing.has_property(property_name):
         raise HTTPException(status_code=404)
     return thing

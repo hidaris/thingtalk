@@ -24,13 +24,13 @@ async def get_things(request: Request) -> UJSONResponse:
 
     descriptions = []
     for idx, thing in tuple(await things.get_things()):
-        description = await thing.as_thing_description()
-        description["href"] = await thing.get_href()
+        description = thing.as_thing_description()
+        description["href"] = thing.href
         description["links"].append({
             "rel": "alternate",
-            "href": f"{get_ws_href(request)}{await thing.get_href()}",
+            "href": f"{get_ws_href(request)}{thing.href}",
         })
-        description["base"] = f"{get_http_href(request)}{await thing.get_href()}"
+        description["base"] = f"{get_http_href(request)}{thing.href}"
 
         description["securityDefinitions"] = {
             "nosec_sc": {"scheme": "nosec", },
@@ -53,15 +53,15 @@ async def get_thing_by_id(
     :param thing -- the thing this request is for
     :return UJSONResponse
     """
-    description = await thing.as_thing_description()
-    description["href"] = await thing.get_href()
+    description = thing.as_thing_description()
+    description["href"] = thing.href
     description["links"].append(
         {
             "rel": "alternate",
-            "href": f"{get_ws_href(request)}{await thing.get_href()}",
+            "href": f"{get_ws_href(request)}{thing.href}",
         }
     )
-    description["base"] = f"{get_http_href(request)}{await thing.get_href()}"
+    description["base"] = f"{get_http_href(request)}{thing.href}"
     description["securityDefinitions"] = {
         "nosec_sc": {"scheme": "nosec", },
     }

@@ -6,16 +6,14 @@ from .models.thing import Server
 from .models.containers import MultipleThings
 from .routers import things, properties, actions, events, websockets
 
-logger.info("initial thingtalk instance")
-
 app = FastAPI(
     title="ThingTalk",
-    version="0.2.0",
-    description="Web of Things framework, high performance, easy to learn, fast to code, ready for production"
+    version="0.7.12",
+    description="Web of Things framework, high performance, easy to learn, fast to code, ready for production",
 )
 server = Server()
-server.set_href_prefix(f"/things/{server.id}")
-app.state.things = MultipleThings({server.id: server}, "things")
+server.href_prefix = f"/things/{server._id}"
+app.state.things = MultipleThings({server._id: server}, "things")
 
 # zeroconf = Zeroconf()
 #
@@ -71,33 +69,3 @@ restapi.include_router(
 
 app.include_router(restapi)
 app.include_router(websockets.router)
-
-# import asyncio
-# from .rule_engine import RuleEngine, msh, Rule
-#
-#
-# @app.on_event("startup")
-# async def startup():
-#     asyncio.create_task(msh.start())
-#     re = RuleEngine()
-#     rule = Rule(**{
-#         "id": 1,
-#         "enabled": True,
-#         "name": "test",
-#         "premise_type": "Singleton",
-#         "premise": [
-#             {
-#                 "topic": "cron/test",
-#                 "messageType": "interval",
-#                 "data": {"second": 5}
-#             }
-#         ],
-#         "conclusion": [
-#             {
-#                 "topic": "things/urn:thingtalk:server",
-#                 "messageType": "setProperty",
-#                 "data": {"state": "ON"}
-#             }
-#         ]
-#     })
-#     await re.load_rule(rule)
