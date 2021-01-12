@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thingtalk"
-version = "0.7.11"
+version = "0.7.12"
 description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 authors = ["hidaris <zuocool@gmail.com>"]
 readme = "README.md"
@@ -44,6 +44,7 @@ gmqtt = "^0.6.9"
 pytest = "^6.0"
 pytest-asyncio = "^0.14.0"
 requests = "^2.24.0"
+black = {version = "^20.8b1", allow-prereleases = true}
 
 [tool.poetry.extras]
 docs = ["mkdocs-material"]
