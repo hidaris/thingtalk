@@ -11,9 +11,21 @@ class InputMsgType(str, Enum):
     request_action = 'requestAction'
 
 
+class IntermediateMsgType(str, Enum):
+    set_property = 'setProperty'
+    sync_property = 'syncProperty'
+    request_action = 'requestAction'
+
+
 class InputMsg(BaseModel):
     topic: typing.Optional[str] = None
     messageType: InputMsgType
+    data: typing.Dict[str, typing.Any]
+
+
+class IntermediateMsg(BaseModel):
+    topic: typing.Optional[str] = None
+    messageType: IntermediateMsgType
     data: typing.Dict[str, typing.Any]
 
 

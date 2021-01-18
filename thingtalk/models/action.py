@@ -1,6 +1,7 @@
 """High-level Action base class implementation."""
 
 from functools import cached_property
+import typing
 import uuid
 
 from ..utils import timestamp
@@ -23,11 +24,11 @@ class Action:
         self._id = id_
         self._thing = thing
         self._input = input_
-        self._href_prefix = ""
-        self._href = f"/actions/{self.title}/{self._id}"
-        self._status = "created"
-        self._time_requested = timestamp()
-        self._time_completed = None
+        self._href_prefix: str = ""
+        self._href: str = f"/actions/{self.title}/{self._id}"
+        self._status: str = "created"
+        self._time_requested: str = timestamp()
+        self._time_completed: typing.Optional[str] = None
         self.meta = None
 
     @cached_property
@@ -115,7 +116,7 @@ class Action:
         return self._time_completed
 
     @time_completed.setter
-    def time_completed(self, time):
+    def time_completed(self, time: str):
         """update the time completed."""
         self.clean_description_cache()
         self._time_completed = time
