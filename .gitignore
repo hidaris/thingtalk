@@ -10,3 +10,6 @@ build/
 dist/
 __pycache__
 poetry.lock
+
+# Ignore dynaconf secret files
+.secrets.*

@@ -23,7 +23,7 @@ async def get_things(request: Request) -> UJSONResponse:
     things = request.app.state.things
 
     descriptions = []
-    for idx, thing in tuple(await things.get_things()):
+    for idx, thing in tuple(things.get_things()):
         description = thing.as_thing_description()
         description["href"] = thing.href
         description["links"].append({

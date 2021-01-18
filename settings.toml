@@ -1,0 +1,3 @@
+MQTT_HOST = '10.10.10.8'
+MQTT_USERNAME = 'longan'
+MQTT_PASSWORD = 'longan'

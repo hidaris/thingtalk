@@ -1,10 +1,19 @@
+import socket
+
 from fastapi import FastAPI, APIRouter
-
 from loguru import logger
+from zeroconf import Zeroconf, ServiceInfo
+from functools import partial
 
+from config import settings
+from .routers.mqtt import ThingMqtt
+from .utils import get_ip
 from .models.thing import Server
 from .models.containers import MultipleThings
 from .routers import things, properties, actions, events, websockets
+from .toolkits import ee
+from .schema import OutMsg
+
 
 app = FastAPI(
     title="ThingTalk",
@@ -15,35 +24,63 @@ server = Server()
 server.href_prefix = f"/things/{server._id}"
 app.state.things = MultipleThings({server._id: server}, "things")
 
-# zeroconf = Zeroconf()
-#
-#
-# @app.on_event("startup")
-# async def start_mdns():
-#     """Start listening for incoming connections."""
-#     name = await app.state.things.get_name()
-#     args = [
-#         '_webthing._tcp.local.',
-#         f"{name}._webthing._tcp.local.",
-#     ]
-#     kwargs = {
-#         'port': '8000',  # port,
-#         'properties': {
-#             'path': '/',
-#         },
-#         'server': f"{socket.gethostname()}.local.",
-#         'addresses': [socket.inet_aton(get_ip())]
-#     }
-#     app.state.service_info = ServiceInfo(*args, **kwargs)
-#     print(app.state.service_info)
-#     zeroconf.register_service(app.state.service_info)
-#
-#
-# @app.on_event("shutdown")
-# async def stop_mdns():
-#     """Stop listening."""
-#     zeroconf.unregister_service(app.state.service_info)
-#     zeroconf.close()
+zeroconf = Zeroconf()
+
+
+@app.on_event("startup")
+async def start_mdns():
+    """Start listening for incoming connections."""
+    name = app.state.things.get_name()
+    args = [
+        "_webthing._tcp.local.",
+        f"{name}._webthing._tcp.local.",
+    ]
+    kwargs = {
+        "port": 8000,
+        "properties": {
+            "path": "/",
+        },
+        "server": f"{socket.gethostname()}.local.",
+        "addresses": [socket.inet_aton(get_ip())],
+    }
+    app.state.service_info = ServiceInfo(*args, **kwargs)
+    zeroconf.register_service(app.state.service_info)
+
+
+@app.on_event("shutdown")
+async def stop_mdns():
+    """Stop listening."""
+    zeroconf.unregister_service(app.state.service_info)
+    zeroconf.close()
+
+
+username = settings.MQTT_USERNAME
+password = settings.MQTT_PASSWORD
+host = settings.MQTT_HOST
+
+mqtt = ThingMqtt(host, "1883", username=username, password=password)
+
+
+@app.on_event("startup")
+async def startup():
+    await mqtt.connect()
+    await mqtt.publish("thingtalk/test", "online")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await mqtt.disconnect()
+
+
+async def publish(topic: str, payload: OutMsg):
+    await mqtt.publish(f"thingtalk/{topic}", payload.dict())
+
+
+for key, _ in app.state.things.get_things():
+    ee.on(f"things/{key}/state", partial(publish, f"things/{key}/state"))
+    ee.on(f"things/{key}/error", partial(publish, f"things/{key}/error"))
+    ee.on(f"things/{key}/event", partial(publish, f"things/{key}/event"))
+
 
 restapi = APIRouter()
 
