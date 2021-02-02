@@ -1,4 +1,5 @@
 import socket
+import click
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -21,8 +22,8 @@ app = FastAPI(
     description="Web of Things framework, high performance, easy to learn, fast to code, ready for production",
 )
 server = Server()
-server.href_prefix = f"/things/{server._id}"
-app.state.things = MultipleThings({server._id: server}, "things")
+server.href_prefix = f"/things/{server.id}"
+app.state.things = MultipleThings({server.id: server}, "things")
 
 zeroconf = Zeroconf()
 
@@ -106,3 +107,12 @@ restapi.include_router(
 
 app.include_router(restapi)
 app.include_router(websockets.router)
+
+
+@click.command()
+@click.option("--count", default=1, e=int, help="Number of greetings.")
+@click.option("--name", type=str, prompt="Your name", help="The person to greet.")
+def hello(count: int, name: str):
+    """Simple program that greets NAME for a total of COUNT times."""
+    for _ in range(count):
+        click.echo(f"Hello, {name}!")

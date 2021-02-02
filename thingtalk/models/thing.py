@@ -183,7 +183,7 @@ class Thing:
         return self._href_prefix
 
     @href_prefix.setter
-    def href_prefix(self, prefix: str):
+    def href_prefix(self, prefix: str) -> None:
         """
         Set the prefix of any hrefs associated with this thing.
         prefix -- the prefix
@@ -203,7 +203,7 @@ class Thing:
         return self._ui_href
 
     @ui_href.setter
-    def ui_href(self, href):
+    def ui_href(self, href) -> None:
         """
         Set the href of this thing's custom UI.
         href -- the href
@@ -227,7 +227,7 @@ class Thing:
         return self._title
 
     @title.setter
-    def title(self, title):
+    def title(self, title) -> None:
         """
         Set the new title of this thing.
         title -- the new title
