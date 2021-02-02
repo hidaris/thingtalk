@@ -53,5 +53,5 @@ black = {version = "^20.8b1", allow-prereleases = true}
 docs = ["mkdocs-material"]
 
 [tool.poetry.scripts]
-hello = 'thingtalk.app:hello'
+thingtalk = 'thingtalk.cli:thingtalk'
 

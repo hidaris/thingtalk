@@ -4,7 +4,7 @@
 from .models.action import Action
 from .models.event import Event
 from .models.property import Property
-from .app import app, hello
+from .app import app
 from .models.containers import SingleThing, MultipleThings
 from .models.thing import Thing
 from .domains.iot import Device

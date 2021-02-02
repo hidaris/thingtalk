@@ -1,5 +1,4 @@
 import socket
-import click
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -64,6 +63,7 @@ mqtt = ThingMqtt(host, "1883", username=username, password=password)
 
 @app.on_event("startup")
 async def startup():
+    logger.debug(app.state.mode)
     await mqtt.connect()
     await mqtt.publish("thingtalk/test", "online")
 
@@ -107,12 +107,3 @@ restapi.include_router(
 
 app.include_router(restapi)
 app.include_router(websockets.router)
-
-
-@click.command()
-@click.option("--count", default=1, e=int, help="Number of greetings.")
-@click.option("--name", type=str, prompt="Your name", help="The person to greet.")
-def hello(count: int, name: str):
-    """Simple program that greets NAME for a total of COUNT times."""
-    for _ in range(count):
-        click.echo(f"Hello, {name}!")
