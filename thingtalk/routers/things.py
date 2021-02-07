@@ -25,7 +25,7 @@ async def get_things(request: Request) -> UJSONResponse:
     descriptions = []
     for idx, thing in tuple(things.get_things()):
         description = thing.as_thing_description()
-        description["href"] = thing.href
+
         description["links"].append({
             "rel": "alternate",
             "href": f"{get_ws_href(request)}{thing.href}",

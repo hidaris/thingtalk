@@ -5,8 +5,8 @@ from loguru import logger
 from zeroconf import Zeroconf, ServiceInfo
 from functools import partial
 
-from config import settings
-from .routers.mqtt import ThingMqtt
+
+from .routers.mqtt import mqtt
 from .utils import get_ip
 from .models.thing import Server
 from .models.containers import MultipleThings
@@ -22,7 +22,8 @@ app = FastAPI(
 )
 server = Server()
 server.href_prefix = f"/things/{server.id}"
-app.state.things = MultipleThings({server.id: server}, "things")
+# app.state.things = MultipleThings({server.id: server}, "things")
+app.state.things = MultipleThings({}, "things")
 
 zeroconf = Zeroconf()
 
@@ -54,18 +55,13 @@ async def stop_mdns():
     zeroconf.close()
 
 
-username = settings.MQTT_USERNAME
-password = settings.MQTT_PASSWORD
-host = settings.MQTT_HOST
-
-mqtt = ThingMqtt(host, "1883", username=username, password=password)
-
-
 @app.on_event("startup")
 async def startup():
-    logger.debug(app.state.mode)
+    app.state.mode = "gateway"
     await mqtt.connect()
-    await mqtt.publish("thingtalk/test", "online")
+    await mqtt.set_app(app)
+    await mqtt.publish("thingtalk/bridge/state", "online")
+    await app.state.things.add_thing(server)
 
 
 @app.on_event("shutdown")

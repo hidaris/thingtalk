@@ -167,6 +167,8 @@ class Thing:
         if self._type:
             thing["@type"] = list(self._type)
 
+        thing["href"] = self.href
+
         return thing
 
     @property

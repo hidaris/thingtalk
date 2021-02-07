@@ -73,10 +73,14 @@ class Mqtt:
     async def on_message(self, client: Client, topic, payload, qos, properties):
         logger.info(
             f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
+        logger.debug("on message")
         if topic == 'thingtalk/bridge/':
             pass
-        if topic == 'thingtalk/+/config':
-            pass
+
+        if client.app.state.mode == "gateway":
+            logger.debug("gateway")
+            if topic == 'thingtalk/+/config':
+                pass
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")

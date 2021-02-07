@@ -1,5 +1,6 @@
 from .event import ThingPairedEvent, ThingRemovedEvent
 from .thing import Thing
+from ..routers.mqtt import mqtt
 
 
 class SingleThing:
@@ -23,6 +24,9 @@ class SingleThing:
     def get_name(self):
         """Get the mDNS server name."""
         return self.thing.title
+
+    async def add_thing(self, thing: Thing):
+        await mqtt.publish(f"things/{thing.id}/config", thing.as_thing_description())
 
 
 class MultipleThings:
@@ -56,6 +60,8 @@ class MultipleThings:
     async def add_thing(self, thing: Thing):
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
+        things = [thing.as_thing_description() for _, thing in self.get_things()]
+        await mqtt.publish(f"thingtalk/things", things)
 
         # await self.server.add_event(ThingPairedEvent({
         #     '@type': list(thing._type),

@@ -1,6 +1,7 @@
 import gmqtt
 
 from loguru import logger
+from config import settings
 from ..toolkits.mqtt import Mqtt, Client
 
 
@@ -14,6 +15,15 @@ class ThingMqtt(Mqtt):
     async def on_message(self, client: Client, topic, payload, qos, properties):
         logger.info(
             f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
+        topic_words = topic.split("/")
+
+        if topic == 'thingtalk/bridge/state':
+            logger.debug(payload)
+
+        if client.app.state.mode == "gateway":
+            logger.debug("gateway")
+            if topic[2] == 'config':
+                logger.debug(payload)
         
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")
@@ -30,3 +40,10 @@ class ThingMqtt(Mqtt):
                 client.resubscribe(subscription)
             logger.info('[SUBSCRIBED {}] mid {}, QOS: {}, properties {}'.format(
                 client._client_id, mid, granted_qos, properties))
+
+
+username = settings.MQTT_USERNAME
+password = settings.MQTT_PASSWORD
+host = settings.MQTT_HOST
+
+mqtt = ThingMqtt(host, "1883", username=username, password=password)
