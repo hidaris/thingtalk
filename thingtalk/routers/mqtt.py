@@ -3,6 +3,19 @@ import gmqtt
 from loguru import logger
 from config import settings
 from ..toolkits.mqtt import Mqtt, Client
+from ..models.thing import Thing
+from ..models.action import Action
+
+
+class MqttAction(Action):
+    async def perform_action(self):
+        await mqtt.publish(f"thingtalk/things/{self.thing.id}/action", self.input)
+
+
+class MqttThing(Thing):
+    async def property_action(self, property_):
+        await mqtt.publish(f"thingtalk/things/{self.id}",
+                           {property_.name: property_.value})
 
 
 class ThingMqtt(Mqtt):
@@ -24,7 +37,7 @@ class ThingMqtt(Mqtt):
             logger.debug("gateway")
             if topic[2] == 'config':
                 logger.debug(payload)
-        
+
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")
 

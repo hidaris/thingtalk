@@ -13,7 +13,7 @@ class Action:
     title: str = ""
     schema: dict = {}
 
-    def __init__(self, thing, input_, id_=uuid.uuid4().hex):
+    def __init__(self, thing, input_, id_=uuid.uuid4().hex, schema=None, title=None):
         """
         Initialize the object.
         id_ ID of this action, default uuid
@@ -30,6 +30,12 @@ class Action:
         self._time_requested: str = timestamp()
         self._time_completed: typing.Optional[str] = None
         self.meta = None
+
+        if schema:
+            self.schema = schema
+
+        if title:
+            self.title = title
 
     @cached_property
     def description(self):
