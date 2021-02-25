@@ -33,7 +33,7 @@ thingtalk can be installed via pip, as such:
 
 ## Running the Sample
 `$ wget
-https://raw.githubusercontent.com/hidaris/thingtalk/master/example/test.py`
+https://raw.githubusercontent.com/hidaris/thingtalk/master/example/test_light.py`
 
 `$ uvicorn test:app --reload`
 
