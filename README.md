@@ -35,7 +35,7 @@ thingtalk can be installed via pip, as such:
 `$ wget
 https://raw.githubusercontent.com/hidaris/thingtalk/master/example/test_light.py`
 
-`$ uvicorn test:app --reload`
+`$ uvicorn test_light:app --reload`
 
 This starts a server and lets you search for it from your gateway through mDNS. To add it to your gateway, navigate to the Things page in the gateway's UI and click the + icon at the bottom right. If both are on the same network, the example thing will automatically appear.
 
