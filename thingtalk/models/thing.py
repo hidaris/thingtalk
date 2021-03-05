@@ -327,7 +327,7 @@ class Thing:
         """
         prop = self.find_property(property_name)
         if prop:
-            return await prop.get_value()
+            return prop.value
 
         return None
 
@@ -359,7 +359,7 @@ class Thing:
             return
         logger.info(f"set {self._title}'s property {property_name} to {value}")
         try:
-            await prop.set_value(value)
+            prop.value = value
             await self.property_notify({property_name: value})
             await self.property_action(prop)
         except PropertyError as e:
@@ -377,7 +377,7 @@ class Thing:
             return
         logger.info(f"sync {self._title}'s property {property_name} to {value}")
         try:
-            await prop.set_value(value, with_action=False)
+            prop.value = value
             await self.property_notify({property_name: value})
         except PropertyError as e:
             await self.error_notify(str(e))
@@ -500,6 +500,19 @@ class Thing:
             metadata = cls.schema
 
         name = cls.title
+        self.available_actions[name] = {
+            "metadata": metadata,
+            "class": cls,
+        }
+        self.actions[name] = []
+
+    def add_available_mqtt_action(self, cls, name, metadata):
+        """
+        Add an available action.
+        name -- name of the action, default use cls.name
+        metadata -- action metadata, i.e. type, description, etc., as a dict
+        cls -- class to instantiate for this action
+        """
         self.available_actions[name] = {
             "metadata": metadata,
             "class": cls,

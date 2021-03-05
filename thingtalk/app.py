@@ -5,7 +5,6 @@ from loguru import logger
 from zeroconf import Zeroconf, ServiceInfo
 from functools import partial
 
-
 from .routers.mqtt import mqtt
 from .utils import get_ip
 from .models.thing import Server
@@ -13,7 +12,6 @@ from .models.containers import MultipleThings
 from .routers import things, properties, actions, events, websockets
 from .toolkits import ee
 from .schema import OutMsg
-
 
 app = FastAPI(
     title="ThingTalk",
@@ -57,11 +55,23 @@ async def stop_mdns():
 
 @app.on_event("startup")
 async def startup():
-    app.state.mode = "gateway"
-    await mqtt.connect()
     await mqtt.set_app(app)
+    await mqtt.connect()
     await mqtt.publish("thingtalk/bridge/state", "online")
     await app.state.things.add_thing(server)
+
+    if app.state.mode == "gateway":
+        for key, _ in app.state.things.get_things():
+            ee.on(f"things/{key}/state", partial(publish, f"things/{key}/state"))
+            ee.on(f"things/{key}/error", partial(publish, f"things/{key}/error"))
+            ee.on(f"things/{key}/event", partial(publish, f"things/{key}/event"))
+            ee.on(f"things/{key}/config", partial(publish, f"things/{key}/config"))
+    elif app.state.mode == "single":
+        key = app.state.thing.get_thing().id
+        ee.on(f"things/{key}/state", partial(publish, f"things/{key}/state"))
+        ee.on(f"things/{key}/error", partial(publish, f"things/{key}/error"))
+        ee.on(f"things/{key}/event", partial(publish, f"things/{key}/event"))
+        ee.on(f"things/{key}/config", partial(publish, f"things/{key}/config"))
 
 
 @app.on_event("shutdown")
@@ -71,12 +81,6 @@ async def shutdown():
 
 async def publish(topic: str, payload: OutMsg):
     await mqtt.publish(f"thingtalk/{topic}", payload.dict())
-
-
-for key, _ in app.state.things.get_things():
-    ee.on(f"things/{key}/state", partial(publish, f"things/{key}/state"))
-    ee.on(f"things/{key}/error", partial(publish, f"things/{key}/error"))
-    ee.on(f"things/{key}/event", partial(publish, f"things/{key}/event"))
 
 
 restapi = APIRouter()

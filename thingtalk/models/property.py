@@ -1,10 +1,16 @@
 """High-level Property base class implementation."""
 
+import typing
+
 from copy import deepcopy
-from functools import cached_property
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 from loguru import logger
+
+try:
+    from functools import cached_property
+except ImportError:
+    from cached_property import cached_property
 
 from .errors import PropertyError
 
@@ -15,7 +21,7 @@ class Property:
     __slots__ = [
         "_thing",
         "_name",
-        "value",
+        "_value",
         "_metadata",
         "_href_prefix",
         "_href",
@@ -23,7 +29,7 @@ class Property:
         "__dict__",
     ]
 
-    def __init__(self, name, value, thing=None, metadata=None):
+    def __init__(self, name: str, value=None, thing=None, metadata: typing.Optional[dict] = None):
         """
         Initialize the object.
         thing -- the Thing this property belongs to
@@ -34,20 +40,36 @@ class Property:
         """
         self._thing = thing
         self._name = name
-        self.value = value
+        self._value = None
         self._metadata = metadata if metadata is not None else {}
         self._href_prefix = ""
         self._href = f"/properties/{self._name}"
         self._media_type = "application/json"
 
-    def validate_value(self, value):
+        self.initial_value(value)
+
+    def initial_value(self, value):
+        if value is None:
+            if self.metadata["type"] in ["integer", "number"]:
+                self.value = 0
+            elif self.metadata["type"] == "string":
+                self.value = ""
+            elif self.metadata["type"] == "object":
+                self.value = {}
+            elif self.metadata["type"] == "array":
+                self.value = []
+            elif self.metadata["type"] == "boolean":
+                self.value = True
+
+    def validate_value(self, value, is_sync=False):
         """
         Validate new property value before setting it.
         value -- New value
         """
-        if "readOnly" in self.metadata and self.metadata["readOnly"]:
-            logger.error("Read-only property")
-            raise PropertyError("Read-only property")
+        if not is_sync:
+            if "readOnly" in self.metadata and self.metadata["readOnly"]:
+                logger.error("Read-only property")
+                raise PropertyError("Read-only property")
 
         try:
             validate(value, self.metadata)
@@ -127,20 +149,30 @@ class Property:
         self.clean_description_cache()
         self._media_type = media_type
 
-    async def get_value(self):
+    @property
+    def value(self):
         """
         Get the current property value.
         Returns the value.
         """
-        return await self.value.get()
+        return self._value
 
-    async def set_value(self, value, with_action=True):
+    @value.setter
+    def value(self, value):
         """
         Set the current value of the property.
         value -- the value to set
         """
         self.validate_value(value)
-        await self.value.set(value, with_action=with_action)
+        self._value = value
+
+    def sync_value(self, value):
+        """
+        sync the current value of the property from sensor.
+        value -- the value to set
+        """
+        self.validate_value(value, is_sync=True)
+        self._value = value
 
     @property
     def name(self):

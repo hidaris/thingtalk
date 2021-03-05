@@ -20,33 +20,58 @@ async def get_things(request: Request) -> UJSONResponse:
     :param request -- the request
     :return UJSONResponse
     """
-    things = request.app.state.things
+    if request.app.state.mode == "gateway":
+        things = request.app.state.things
 
-    descriptions = []
-    for idx, thing in tuple(things.get_things()):
+        descriptions = []
+        for idx, thing in tuple(things.get_things()):
+            description = thing.as_thing_description()
+
+            description["links"].append(
+                {
+                    "rel": "alternate",
+                    "href": f"{get_ws_href(request)}{thing.href}",
+                }
+            )
+            description["base"] = f"{get_http_href(request)}{thing.href}"
+
+            description["securityDefinitions"] = {
+                "nosec_sc": {
+                    "scheme": "nosec",
+                },
+            }
+            description["security"] = "nosec_sc"
+
+            bak = copy.deepcopy(description)
+            descriptions.append(bak)
+
+        return UJSONResponse(descriptions)
+    else:
+        thing = request.app.state.thing.get_thing()
         description = thing.as_thing_description()
 
-        description["links"].append({
-            "rel": "alternate",
-            "href": f"{get_ws_href(request)}{thing.href}",
-        })
+        description["links"].append(
+            {
+                "rel": "alternate",
+                "href": f"{get_ws_href(request)}{thing.href}",
+            }
+        )
         description["base"] = f"{get_http_href(request)}{thing.href}"
 
         description["securityDefinitions"] = {
-            "nosec_sc": {"scheme": "nosec", },
+            "nosec_sc": {
+                "scheme": "nosec",
+            },
         }
         description["security"] = "nosec_sc"
 
-        bak = copy.deepcopy(description)
-        descriptions.append(bak)
-
-    return UJSONResponse(descriptions)
+        return UJSONResponse(description)
 
 
 @router.get("/things/{thing_id}")
 async def get_thing_by_id(
-        request: Request,
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+    request: Request, thing: Thing = Depends(get_thing)
+) -> UJSONResponse:
     """
     Handle a GET request, including websocket requests.
     :param request: the request
@@ -63,7 +88,9 @@ async def get_thing_by_id(
     )
     description["base"] = f"{get_http_href(request)}{thing.href}"
     description["securityDefinitions"] = {
-        "nosec_sc": {"scheme": "nosec", },
+        "nosec_sc": {
+            "scheme": "nosec",
+        },
     }
     description["security"] = "nosec_sc"
 

@@ -9,8 +9,11 @@ async def get_thing(request: Request, thing_id: str):
     thing_id -- ID of the thing to get, in string form
     Returns the thing, or None if not found.
     """
-    things = request.app.state.things
-    thing = things.get_thing(thing_id)
+    if request.app.state.mode == "gateway":
+        things = request.app.state.things
+        thing = things.get_thing(thing_id)
+    else:
+        thing = request.app.state.thing.get_thing()
     if thing is None:
         raise HTTPException(status_code=404)
     return thing

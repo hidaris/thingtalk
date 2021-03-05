@@ -1,8 +1,13 @@
 """High-level Action base class implementation."""
 
-from functools import cached_property
 import typing
 import uuid
+
+try:
+    from functools import cached_property
+except ImportError:
+    from cached_property import cached_property
+
 
 from ..utils import timestamp
 
@@ -13,7 +18,7 @@ class Action:
     title: str = ""
     schema: dict = {}
 
-    def __init__(self, thing, input_, id_=uuid.uuid4().hex, schema=None, title=None):
+    def __init__(self, thing, input_, id_=uuid.uuid4().hex):
         """
         Initialize the object.
         id_ ID of this action, default uuid
@@ -30,12 +35,6 @@ class Action:
         self._time_requested: str = timestamp()
         self._time_completed: typing.Optional[str] = None
         self.meta = None
-
-        if schema:
-            self.schema = schema
-
-        if title:
-            self.title = title
 
     @cached_property
     def description(self):

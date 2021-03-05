@@ -1,6 +1,10 @@
 """High-level Event base class implementation."""
 
-from functools import cached_property
+try:
+    from functools import cached_property
+except ImportError:
+    from cached_property import cached_property
+
 
 from ..utils import timestamp
 

@@ -30,18 +30,19 @@ fastapi = "^0.63.0"
 uvicorn = {extras = ["standard"], version = "^0.13.0"}
 ujson = "^4.0.0"
 email_validator = "^1.1.1"
-httpx = "^0.16.0"
+httpx = "^0.17.0"
 pyee = "^8.1.0"
 jsonschema = "^3.2.0"
 ifaddr = "^0.1.7"
 zeroconf = "^0.28.2"
 loguru = "^0.5.2"
-mkdocs-material = { version = "^6.1.6", optional = true }
+mkdocs-material = { version = "^7.0.0", optional = true }
 async-cron = "^1.6.2"
 gmqtt = "^0.6.9"
 dynaconf = "^3.1.2"
 click = "^7.1.2"
 rich = "^9.10.0"
+cached-property = { version = "^1.5", python = "~3.7"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0"
@@ -54,4 +55,9 @@ docs = ["mkdocs-material"]
 
 [tool.poetry.scripts]
 thingtalk = 'thingtalk.cli:thingtalk'
+
+[[tool.poetry.source]]
+name = "tuna"
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
 

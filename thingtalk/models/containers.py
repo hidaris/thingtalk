@@ -6,7 +6,7 @@ from ..routers.mqtt import mqtt
 class SingleThing:
     """A container for a single thing."""
 
-    def __init__(self, thing):
+    def __init__(self, thing: Thing):
         """
         Initialize the container.
         thing -- the thing to store
@@ -25,8 +25,8 @@ class SingleThing:
         """Get the mDNS server name."""
         return self.thing.title
 
-    async def add_thing(self, thing: Thing):
-        await mqtt.publish(f"things/{thing.id}/config", thing.as_thing_description())
+    async def register(self):
+        await mqtt.publish(f"things/{self.thing.id}/config", self.thing.as_thing_description(), retain=True)
 
 
 class MultipleThings:
@@ -61,7 +61,7 @@ class MultipleThings:
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
         things = [thing.as_thing_description() for _, thing in self.get_things()]
-        await mqtt.publish(f"thingtalk/things", things)
+        """ await mqtt.publish(f"thingtalk/things", things) """
 
         # await self.server.add_event(ThingPairedEvent({
         #     '@type': list(thing._type),
