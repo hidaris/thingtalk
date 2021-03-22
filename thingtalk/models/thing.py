@@ -20,7 +20,7 @@ from .property import Property
 from .action import Action
 from .errors import PropertyError
 
-from ..toolkits.event_bus import ee
+from ..toolkits.event_bus import mb
 from ..schema import InputMsg, OutMsg
 
 
@@ -67,7 +67,7 @@ class Thing:
         self._href_prefix = ""
         self._ui_href = ""
         self.subscribe_topics = [f"things/{self._id}"]
-        ee.on(f"things/{self._id}", self.dispatch)
+        mb.on(f"things/{self._id}", self.dispatch)
 
     async def subscribe_broadcast(self):
         pass
@@ -75,7 +75,7 @@ class Thing:
     async def remove_listener(self):
         for topic in self.subscribe_topics:
             logger.info(f"remove topic {topic}'s listener dispatch")
-            ee.remove_listener(topic, self.dispatch)
+            mb.remove_listener(topic, self.dispatch)
 
     async def dispatch(self, message: InputMsg):
         logger.debug(f"dispatch {message}")
@@ -319,7 +319,7 @@ class Thing:
         """
         return self.properties.get(property_name, None)
 
-    async def get_property(self, property_name):
+    def get_property(self, property_name):
         """
         Get a property's value.
         property_name -- the property to get the value of
@@ -529,11 +529,11 @@ class Thing:
             "messageType": "propertyStatus",
             "data": data,
         }
-        try:
-            message = OutMsg(**message)
-            ee.emit(f"things/{self.id}/state", message)
-        except ValidationError as e:
-            logger.error(str(e))
+        # try:
+        #     message = OutMsg(**message)
+        mb.emit(f"things/{self.id}/state", message)
+        # except ValidationError as e:
+        #     logger.error(str(e))
 
     async def error_notify(self, error_, request=None):
         """
@@ -553,7 +553,7 @@ class Thing:
 
         try:
             message = OutMsg(**message)
-            ee.emit(f"things/{self.id}/error", message)
+            mb.emit(f"things/{self.id}/error", message)
         except ValidationError as e:
             logger.error(str(e))
 
@@ -576,7 +576,7 @@ class Thing:
         }
         try:
             message = OutMsg(**message)
-            ee.emit(f"things/{self.id}/state", message)
+            mb.emit(f"things/{self.id}/state", message)
         except ValidationError as e:
             logger.error(str(e))
 
@@ -596,7 +596,7 @@ class Thing:
         }
         try:
             message = OutMsg(**message)
-            ee.emit(f"things/{self.id}/event", message)
+            mb.emit(f"things/{self.id}/event", message)
         except ValidationError as e:
             logger.error(str(e))
 
@@ -625,7 +625,7 @@ class Server(Thing):
         self.add_property(
             Property(
                 "state",
-                Value("ON"),
+                value="ON",
                 metadata={
                     "@type": "ServerStateProperty",
                     "title": "State",

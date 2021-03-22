@@ -5,6 +5,7 @@ from loguru import logger
 
 # from config import settings
 from ..toolkits.mqtt import Mqtt, Client
+from ..toolkits.event_bus import mb
 from ..models.thing import Thing
 from ..models.property import Property
 from ..models.action import Action
@@ -40,12 +41,10 @@ class ThingMqtt(Mqtt):
         logger.debug(f"current mode {client.app.state.mode}")
         logger.debug(topic)
         logger.debug(payload)
-        if topic == "thingtalk/bridge/state":
-            logger.debug(payload)
 
         if client.app.state.mode == "gateway":
             """ logger.debug(topic_words) """
-            if len(topic_words) == 3 and topic_words[2] == "config":
+            if len(topic_words) == 3 and topic_words[2] == "td":
                 payload = json.loads(payload)
                 thing = MqttThing(
                     id_=payload.get("id"),
@@ -65,6 +64,7 @@ class ThingMqtt(Mqtt):
                     del metadata["links"]
                     thing.add_available_mqtt_action(MqttAction, name, metadata)
                 await client.app.state.things.add_thing(thing)
+                mb.emit(f"things/{thing.id}/get", {})
 
         if len(topic_words) == 4 and topic_words[3] == "state":
             payload = json.loads(payload)

@@ -10,7 +10,7 @@ from pydantic import (
     StrictInt, StrictBool, StrictFloat, StrictStr
 )
 
-from .toolkits.event_bus import ee
+from .toolkits.event_bus import mb
 from .toolkits.scheduler import Scheduler
 from .schema import OutMsg, Question
 
@@ -69,7 +69,7 @@ class Rule(RuleInput):
 class Operation:
     def __init__(self,
                  questions: typing.Dict[str, Question],
-                 enabled=True,
+                 enabled: bool = True,
                  conclusion=None):
         self.questions = questions
         self.enabled = enabled
@@ -142,7 +142,7 @@ class RuleComputeVisitor(OperationFunctor):
     async def run_conclusion(self, _operation: Operation) -> None:
         for conclusion in _operation.conclusion:
             logger.debug(conclusion.topic)
-            ee.emit(conclusion.topic, conclusion)
+            mb.emit(conclusion.topic, conclusion)
         for question_key, should_value in tuple(_operation.questions.items()):
             question_env[question_key] = None
 
@@ -194,7 +194,7 @@ async def report_cron_status(question_key) -> None:
     }
 
     message = OutMsg(**message)
-    ee.emit(f"{question_key}/state", message)
+    mb.emit(f"{question_key}/state", message)
 
 
 question_env = {}
@@ -249,7 +249,7 @@ class RuleEngine:
             for i in dates:
                 job = CronJob(name=question_key).weekday(i).at(time).go(report_cron_status, question_key)
                 msh.add_job(job)
-        ee.on(f"{question_key}/state", self.handle_status)
+        mb.on(f"{question_key}/state", self.handle_status)
 
     async def compute_rule(self, rule_id):
         for rule_pk, rule in tuple(self.rule_env.get(rule_id, {}).items()):
@@ -343,7 +343,7 @@ class RuleEngine:
             })
             logger.debug(self.rule_env)
             if "things" in pre.topic or "scenes" in pre.topic:
-                ee.on(f"{pre.topic}/state", self.handle_status)
+                mb.on(f"{pre.topic}/state", self.handle_status)
         logger.info(f"load rule env: {self.rule_env}")
 
     async def disable_rule(self, pre, rule):

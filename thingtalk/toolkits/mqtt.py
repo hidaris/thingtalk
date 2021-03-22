@@ -1,11 +1,13 @@
 import uuid
 import time
 
+from functools import partial
+
 import gmqtt
 
 from loguru import logger
 
-from .event_bus import ee
+from .event_bus import mb
 
 
 class Client(gmqtt.Client):
@@ -49,6 +51,39 @@ class Mqtt:
         await self.sub_client.set_app(app)
         await self.pub_client.set_app(app)
 
+        @mb.on("register")
+        def on_register(thing_id: str, des):
+            mb.on(f"things/{thing_id}/state", partial(self._publish, f"things/{thing_id}/state"))
+            mb.on(f"things/{thing_id}/error", partial(self._publish, f"things/{thing_id}/error"))
+            mb.on(f"things/{thing_id}/event", partial(self._publish, f"things/{thing_id}/event"))
+            mb.on(f"things/{thing_id}/td", partial(self._publish, f"things/{thing_id}/td", retain=True))
+
+            @mb.on(f"things/{thing_id}/get")
+            def get_property(property_names):
+                thing = app.state.things.get(thing_id)
+                if thing:
+                    for name in property_names:
+                        value = thing.get_property(name)
+                        mb.emit(f"things/{thing_id}/state", {name: value})
+
+            mb.emit(f"things/{thing_id}/td", des)
+        # if app.state.mode == "gateway":
+        #     for key, _ in app.state.things.get_things():
+        #         mb.on(f"things/{key}/state", partial(self._publish, f"things/{key}/state"))
+        #         mb.on(f"things/{key}/error", partial(self._publish, f"things/{key}/error"))
+        #         mb.on(f"things/{key}/event", partial(self._publish, f"things/{key}/event"))
+        #         mb.on(f"things/{key}/td", partial(self._publish, f"things/{key}/td"))
+        # elif app.state.mode == "single":
+        #     key = app.state.thing.get_thing().id
+        #     mb.on(f"things/{key}/state", partial(self._publish, f"things/{key}/state"))
+        #     mb.on(f"things/{key}/error", partial(self._publish, f"things/{key}/error"))
+        #     mb.on(f"things/{key}/event", partial(self._publish, f"things/{key}/event"))
+        #     mb.on(f"things/{key}/td", partial(self._publish, f"things/{key}/td", retain=True))
+
+    async def _publish(self, topic: str, payload: dict, retain=False):
+        logger.debug(retain)
+        await self.publish(topic, payload, retain=retain)
+
     async def publish(self, topic, payload, retain=False, qos=1, content_type='json',
                       message_expiry_interval=60, topic_alias=1, user_property=('time', str(time.time()))):
         # just another way to publish same message
@@ -74,8 +109,6 @@ class Mqtt:
         logger.info(
             f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
         logger.debug("on message")
-        if topic == 'thingtalk/bridge/':
-            pass
 
         if client.app.state.mode == "gateway":
             logger.debug("gateway")

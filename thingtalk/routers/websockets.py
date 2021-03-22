@@ -7,7 +7,7 @@ from websockets import ConnectionClosedOK, ConnectionClosedError
 from loguru import logger
 from pydantic import ValidationError
 
-from ..toolkits.event_bus import ee
+from ..toolkits.event_bus import mb
 from ..schema import InputMsg, OutMsg
 
 
@@ -57,18 +57,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.info(f"subscribe topic things/{thing_id}/state things/{thing_id}/event things/{thing_id}/error")
                     for topic_type in ["state", "event", "error"]:
                         subscribe_topic = f"things/{thing_id}/{topic_type}"
-                        ee.on(subscribe_topic, send)
+                        mb.on(subscribe_topic, send)
                         subscribe_topics.append(subscribe_topic)
                     subscribe_table.update({id(websocket): subscribe_topics})
             else:
-                ee.emit(message.topic, message)
+                mb.emit(message.topic, message)
 
     except (WebSocketDisconnect, ConnectionClosedOK) as e:
         logger.info(f"websocket {id(websocket)} was closed with code {e}")
         topics = subscribe_table.get(id(websocket))
         if topics:
             for topic in topics:
-                if send in ee.listeners(topic):
-                    ee.remove_listener(topic, send)
+                if send in mb.listeners(topic):
+                    mb.remove_listener(topic, send)
             del subscribe_table[id(websocket)]
             logger.info(f"remove listener send of websocket {id(websocket)}")

@@ -1,6 +1,6 @@
 from .event import ThingPairedEvent, ThingRemovedEvent
 from .thing import Thing
-from ..routers.mqtt import mqtt
+from ..toolkits.event_bus import mb
 
 
 class SingleThing:
@@ -12,6 +12,7 @@ class SingleThing:
         thing -- the thing to store
         """
         self.thing = thing
+        mb.emit("register", self.thing.id, self.thing.as_thing_description())
 
     def get_thing(self, _=None):
         """Get the thing at the given index."""
@@ -24,9 +25,6 @@ class SingleThing:
     def get_name(self):
         """Get the mDNS server name."""
         return self.thing.title
-
-    async def register(self):
-        await mqtt.publish(f"things/{self.thing.id}/config", self.thing.as_thing_description(), retain=True)
 
 
 class MultipleThings:
@@ -60,6 +58,7 @@ class MultipleThings:
     async def add_thing(self, thing: Thing):
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
+        # mb.emit("register", thing.id, thing.as_thing_description())
         things = [thing.as_thing_description() for _, thing in self.get_things()]
         """ await mqtt.publish(f"thingtalk/things", things) """
 
@@ -74,7 +73,7 @@ class MultipleThings:
         # 由于适配问题，thingtalk 中不一定存在对应的设备
         if self.things.get(thing_id):
             thing = self.things[thing_id]
-            await thing.remove_listener()
+            # await thing.remove_listener()
             del self.things[thing_id]
 
             await self.server.add_event(ThingRemovedEvent({

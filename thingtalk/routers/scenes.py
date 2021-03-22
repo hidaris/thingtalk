@@ -12,7 +12,7 @@ from fastapi.responses import UJSONResponse
 
 from tinydb import TinyDB, Query
 
-from ..toolkits.event_bus import ee
+from ..toolkits.event_bus import mb
 
 
 router = APIRouter()
@@ -87,7 +87,7 @@ async def run_scene_by_id(scene_data: SceneMsg):
             scene = Scene(**scene)
             for msg in scene.data:
                 logger.debug(msg)
-                ee.emit(msg.topic, msg)
+                mb.emit(msg.topic, msg)
         except ValidationError as e:
             logger.error(str(e))
 
@@ -128,14 +128,14 @@ async def run_scene(scene_id: str):
             scene = Scene(**scene)
             for msg in scene.data:
                 logger.debug(msg)
-                ee.emit(msg.topic, msg)
+                mb.emit(msg.topic, msg)
             message = {
                 "topic": f"scenes/{scene_id}",
                 "messageType": "sceneStatus",
                 "data": {}
             }
             logger.info(message)
-            ee.emit(f"scenes/{scene_id}/state", message)
+            mb.emit(f"scenes/{scene_id}/state", message)
         except ValidationError as e:
             logger.error(str(e))
 

@@ -45,7 +45,7 @@ class Property:
         self._href_prefix = ""
         self._href = f"/properties/{self._name}"
         self._media_type = "application/json"
-
+        logger.debug(value)
         self.initial_value(value)
 
     def initial_value(self, value):

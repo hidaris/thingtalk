@@ -1,2 +1,2 @@
-from .event_bus import ee
+from .event_bus import mb
 from .mqtt import Mqtt
