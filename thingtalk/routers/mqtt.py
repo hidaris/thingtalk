@@ -1,3 +1,5 @@
+import asyncio
+
 import gmqtt
 import ujson as json
 
@@ -13,13 +15,16 @@ from ..models.action import Action
 
 class MqttAction(Action):
     async def perform_action(self):
-        await mqtt.publish(f"thingtalk/things/{self.thing.id}/action", self.input)
+        mb.emit(
+            f"/things/{self.thing.id}/request_action",
+            {"id": self.id, "data": {self.title: self.input}}
+        )
 
 
 class MqttThing(Thing):
     async def property_action(self, property_):
         await mqtt.publish(
-            f"thingtalk/things/{self.id}/state",
+            f"/things/{self.id}/state",
             {property_.name: await property_.get_value()},
         )
 
@@ -30,7 +35,6 @@ class ThingMqtt(Mqtt):
         client_ids = client._client_id.split(":")
         if client_ids[0] == "sub_client":
             client.subscribe("things/#", qos=1, subscription_identifier=1)
-            client.subscribe("thingtalk/#", qos=1, subscription_identifier=1)
 
     async def on_message(self, client: Client, topic: str, payload, qos, properties):
         """logger.info(
@@ -63,15 +67,56 @@ class ThingMqtt(Mqtt):
                 for name, metadata in payload.get("actions").items():
                     del metadata["links"]
                     thing.add_available_mqtt_action(MqttAction, name, metadata)
-                await client.app.state.things.add_thing(thing)
+                await client.app.state.things.discover(thing)
+
                 mb.emit(f"things/{thing.id}/get", {})
 
-        if len(topic_words) == 4 and topic_words[3] == "state":
-            payload = json.loads(payload)
-            if client.app.state.mode == "single":
-                thing = client.app.state.thing.get_thing()
+            if len(topic_words) == 3 and topic_words[2] == "values":
+                payload = json.loads(payload)
+                thing = client.app.state.thing.get_thing(topic_words[1])
                 for name, value in payload.items():
                     await thing.sync_property(name, value)
+
+            if len(topic_words) == 3 and topic_words[2] == "actions":
+                payload = json.loads(payload)
+                thing = client.app.state.thing.get_thing(topic_words[1])
+                for key, value in payload.items():
+                    href = value.get("href")
+                    href_words = href.split("/")
+                    action = thing.get_action(key, href_words[4])
+                    if action:
+                        action.set_description(payload)
+            if len(topic_words) == 3 and topic_words[2] == "events":
+                pass
+
+        if client.app.state.mode == "single":
+            if len(topic_words) == 3 and topic_words[2] == "set":
+                payload = json.loads(payload)
+                thing = client.app.state.thing.get_thing()
+                for name, value in payload.items():
+                    await thing.set_property(name, value)
+
+            if len(topic_words) == 3 and topic_words[2] == "get":
+                pass
+
+            if len(topic_words) == 3 and topic_words[2] == "request_action":
+                thing = client.app.state.thing.get_thing()
+                id_ = payload.get("id")
+                for action_name, action_params in payload.items():
+                    if action_name == "id":
+                        continue
+
+                    input_ = None
+                    if "input" in action_params:
+                        input_ = action_params["input"]
+
+                    if id_:
+                        action = await thing.perform_action(action_name, input_, id_)
+                    else:
+                        action = await thing.perform_action(action_name, input_)
+
+                    if action:
+                        asyncio.create_task(action.start())
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")

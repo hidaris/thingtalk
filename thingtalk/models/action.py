@@ -62,6 +62,14 @@ class Action:
         if self.__dict__.get("description"):
             del self.__dict__["description"]
 
+    def set_description(self, des):
+        """
+        Set the description of this action.
+        description -- the new description
+        """
+        self.clean_description_cache()
+        self.description = des
+
     @property
     def href_prefix(self):
         return self._href_prefix

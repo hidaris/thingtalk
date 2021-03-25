@@ -449,7 +449,7 @@ class Thing:
         for evt in evts:
             self.add_available_event(evt)
 
-    async def perform_action(self, action_name, input_=None):
+    async def perform_action(self, action_name, input_=None, id_=None):
         """
         Perform an action on the thing.
         action_name -- name of the action
@@ -468,7 +468,10 @@ class Thing:
                 logger.error(str(e))
                 return None
 
-        action = action_type["class"](self, input_=input_)
+        if id_:
+            action = action_type["class"](self, input_=input_, id_=id_)
+        else:
+            action = action_type["class"](self, input_=input_)
         action.href_prefix = self.href_prefix
         await self.action_notify(action)
         self.actions[action_name].append(action)
@@ -506,7 +509,7 @@ class Thing:
         }
         self.actions[name] = []
 
-    def add_available_mqtt_action(self, cls, name, metadata):
+    def add_available_mqtt_action(self, cls, id, name, metadata):
         """
         Add an available action.
         name -- name of the action, default use cls.name

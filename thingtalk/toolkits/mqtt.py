@@ -51,12 +51,15 @@ class Mqtt:
         await self.sub_client.set_app(app)
         await self.pub_client.set_app(app)
 
+        # single thing
         @mb.on("register")
         def on_register(thing_id: str, des):
-            mb.on(f"things/{thing_id}/state", partial(self._publish, f"things/{thing_id}/state"))
-            mb.on(f"things/{thing_id}/error", partial(self._publish, f"things/{thing_id}/error"))
-            mb.on(f"things/{thing_id}/event", partial(self._publish, f"things/{thing_id}/event"))
+            logger.debug("register")
             mb.on(f"things/{thing_id}/td", partial(self._publish, f"things/{thing_id}/td", retain=True))
+            mb.on(f"things/{thing_id}/event", partial(self._publish, f"things/{thing_id}/event"))
+            mb.on(f"things/{thing_id}/values", partial(self._publish, f"things/{thing_id}/values"))
+            mb.on(f"things/{thing_id}/actions", partial(self._publish, f"things/{thing_id}/actions"))
+            mb.on(f"things/{thing_id}/error", partial(self._publish, f"things/{thing_id}/error"))
 
             @mb.on(f"things/{thing_id}/get")
             def get_property(property_names):
@@ -67,18 +70,22 @@ class Mqtt:
                         mb.emit(f"things/{thing_id}/state", {name: value})
 
             mb.emit(f"things/{thing_id}/td", des)
-        # if app.state.mode == "gateway":
-        #     for key, _ in app.state.things.get_things():
-        #         mb.on(f"things/{key}/state", partial(self._publish, f"things/{key}/state"))
-        #         mb.on(f"things/{key}/error", partial(self._publish, f"things/{key}/error"))
-        #         mb.on(f"things/{key}/event", partial(self._publish, f"things/{key}/event"))
-        #         mb.on(f"things/{key}/td", partial(self._publish, f"things/{key}/td"))
-        # elif app.state.mode == "single":
-        #     key = app.state.thing.get_thing().id
-        #     mb.on(f"things/{key}/state", partial(self._publish, f"things/{key}/state"))
-        #     mb.on(f"things/{key}/error", partial(self._publish, f"things/{key}/error"))
-        #     mb.on(f"things/{key}/event", partial(self._publish, f"things/{key}/event"))
-        #     mb.on(f"things/{key}/td", partial(self._publish, f"things/{key}/td", retain=True))
+
+        # gateway
+        @mb.on("discover")
+        def on_discover(thing_id: str, des):
+            mb.on(f"things/{thing_id}/set", partial(self._publish, f"things/{thing_id}/state"))
+            mb.on(f"things/{thing_id}/request_action", partial(self._publish, f"things/{thing_id}/error"))
+
+            @mb.on(f"things/{thing_id}/get")
+            def get_property(property_names):
+                thing = app.state.things.get(thing_id)
+                if thing:
+                    for name in property_names:
+                        value = thing.get_property(name)
+                        mb.emit(f"things/{thing_id}/state", {name: value})
+
+            mb.emit(f"things/{thing_id}/td", des)
 
     async def _publish(self, topic: str, payload: dict, retain=False):
         logger.debug(retain)
@@ -108,7 +115,6 @@ class Mqtt:
     async def on_message(self, client: Client, topic, payload, qos, properties):
         logger.info(
             f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
-        logger.debug("on message")
 
         if client.app.state.mode == "gateway":
             logger.debug("gateway")
