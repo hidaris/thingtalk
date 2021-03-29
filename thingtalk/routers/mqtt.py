@@ -11,20 +11,21 @@ from ..toolkits.event_bus import mb
 from ..models.thing import Thing
 from ..models.property import Property
 from ..models.action import Action
+from ..models.event import Event
 
 
 class MqttAction(Action):
     async def perform_action(self):
         mb.emit(
             f"/things/{self.thing.id}/request_action",
-            {"id": self.id, "data": {self.title: self.input}}
+            {"id": self.id, self.title: self.input}
         )
 
 
 class MqttThing(Thing):
     async def property_action(self, property_):
         await mqtt.publish(
-            f"/things/{self.id}/state",
+            f"/things/{self.id}/properties",
             {property_.name: await property_.get_value()},
         )
 
@@ -34,7 +35,11 @@ class ThingMqtt(Mqtt):
         logger.info(f"[CONNECTED {client._client_id}]")
         client_ids = client._client_id.split(":")
         if client_ids[0] == "sub_client":
-            client.subscribe("things/#", qos=1, subscription_identifier=1)
+            if client.app.state.mode == "gateway":
+                client.subscribe("things/#", qos=1, subscription_identifier=1)
+            else:
+                thing_id = client.app.state.thing.get_thing().id
+                client.subscribe(f"things/{thing_id}/#", qos=1, subscription_identifier=1)
 
     async def on_message(self, client: Client, topic: str, payload, qos, properties):
         """logger.info(
@@ -53,7 +58,7 @@ class ThingMqtt(Mqtt):
                 thing = MqttThing(
                     id_=payload.get("id"),
                     title=payload.get("title"),
-                    type_=payload.get("type"),
+                    type_=payload.get("@type"),
                     description_=payload.get("description"),
                 )
                 for name, metadata in payload.get("properties").items():
@@ -67,13 +72,22 @@ class ThingMqtt(Mqtt):
                 for name, metadata in payload.get("actions").items():
                     del metadata["links"]
                     thing.add_available_mqtt_action(MqttAction, name, metadata)
+
+                for name, metadata in payload.get("events").items():
+                    del metadata["links"]
+
+                    class MqttEvent(Event):
+                        title = name
+                        schema = metadata
+
+                    thing.add_available_event(MqttEvent)
                 await client.app.state.things.discover(thing)
 
-                mb.emit(f"things/{thing.id}/get", {})
+                # mb.emit(f"things/{thing.id}/get", {})
 
             if len(topic_words) == 3 and topic_words[2] == "values":
                 payload = json.loads(payload)
-                thing = client.app.state.thing.get_thing(topic_words[1])
+                thing = client.app.state.things.get_thing(topic_words[1])
                 for name, value in payload.items():
                     await thing.sync_property(name, value)
 
@@ -87,7 +101,12 @@ class ThingMqtt(Mqtt):
                     if action:
                         action.set_description(payload)
             if len(topic_words) == 3 and topic_words[2] == "events":
-                pass
+                payload = json.loads(payload)
+                thing = client.app.state.thing.get_thing(topic_words[1])
+                for name, data in payload.get("data").items():
+                    evt = Event(title=name, data=data)
+                    evt.time = data.get("timestamp")
+                    await thing.add_event(evt)
 
         if client.app.state.mode == "single":
             if len(topic_words) == 3 and topic_words[2] == "set":
@@ -146,6 +165,7 @@ password = settings.MQTT_PASSWORD
 host = settings.MQTT_HOST """
 username = "longan"
 password = "longan"
-host = "127.0.0.1"
+# host = "127.0.0.1"
+host = "10.10.10.7"
 
 mqtt = ThingMqtt(host, "1883", username=username, password=password)

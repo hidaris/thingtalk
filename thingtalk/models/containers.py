@@ -71,7 +71,10 @@ class MultipleThings:
     async def add_thing(self, thing: Thing):
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
-        mb.emit("discover", thing.id, thing.as_thing_description())
+        if self.name == "gateway":
+            mb.emit("discover", thing.id, thing.as_thing_description())
+        else:
+            mb.emit("register", thing.id, thing.as_thing_description())
         things = [thing.as_thing_description() for _, thing in self.get_things()]
         """ await mqtt.publish(f"thingtalk/things", things) """
 

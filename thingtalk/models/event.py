@@ -15,7 +15,7 @@ class Event:
     title = None
     schema = {}
 
-    def __init__(self, data=None):
+    def __init__(self, title=None, schema=None, data=None):
         """
         Initialize the object.
         thing -- Thing this event belongs to
@@ -25,6 +25,12 @@ class Event:
         self._thing = None
         self._data = data
         self._time = timestamp()
+
+        if title:
+            self.title = title
+
+        if schema:
+            self.schema = schema
 
     @cached_property
     def description(self):
@@ -61,10 +67,20 @@ class Event:
         """Get the event's data."""
         return self._data
 
+    @data.setter
+    def data(self, data):
+        """ Set the event's data. """
+        self._data = data
+
     @property
     def time(self):
         """Get the event's timestamp."""
         return self._time
+
+    @time.setter
+    def time(self, time):
+        """ Set the event's timestamp, eg: mqtt """
+        self.time = time
 
 
 class ThingPairingEvent(Event):

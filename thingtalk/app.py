@@ -19,7 +19,7 @@ app = FastAPI(
 server = Server()
 server.href_prefix = f"/things/{server.id}"
 # app.state.things = MultipleThings({server.id: server}, "things")
-app.state.things = MultipleThings({}, "things")
+app.state.things = MultipleThings({}, "gateway")
 
 zeroconf = Zeroconf()
 

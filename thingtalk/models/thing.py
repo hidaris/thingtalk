@@ -396,7 +396,8 @@ class Thing:
                 continue
             logger.info(f"sync {self._title}'s property {property_name} to {value}")
             try:
-                await prop.set_value(value, with_action=False)
+                prop.value = value
+                # await prop.set_value(value, with_action=False)
             except PropertyError as e:
                 del data[property_name]
                 await self.error_notify(str(e))
@@ -509,9 +510,9 @@ class Thing:
         }
         self.actions[name] = []
 
-    def add_available_mqtt_action(self, cls, id, name, metadata):
+    def add_available_mqtt_action(self, cls, name, metadata):
         """
-        Add an available action.
+        Add an available mqtt action.
         name -- name of the action, default use cls.name
         metadata -- action metadata, i.e. type, description, etc., as a dict
         cls -- class to instantiate for this action
@@ -534,7 +535,7 @@ class Thing:
         }
         # try:
         #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/state", message)
+        mb.emit(f"things/{self.id}/values", message)
         # except ValidationError as e:
         #     logger.error(str(e))
 
@@ -554,11 +555,11 @@ class Thing:
         if request:
             message.update({"request": request})
 
-        try:
-            message = OutMsg(**message)
-            mb.emit(f"things/{self.id}/error", message)
-        except ValidationError as e:
-            logger.error(str(e))
+        # try:
+        #     message = OutMsg(**message)
+        mb.emit(f"things/{self.id}/error", message)
+        # except ValidationError as e:
+        #     logger.error(str(e))
 
     async def property_action(self, property_):
         """
@@ -577,11 +578,11 @@ class Thing:
             "messageType": "actionStatus",
             "data": action.description,
         }
-        try:
-            message = OutMsg(**message)
-            mb.emit(f"things/{self.id}/state", message)
-        except ValidationError as e:
-            logger.error(str(e))
+        # try:
+        #     message = OutMsg(**message)
+        mb.emit(f"things/{self.id}/actions", message)
+        # except ValidationError as e:
+        #     logger.error(str(e))
 
     async def event_notify(self, event):
         """
@@ -597,11 +598,11 @@ class Thing:
             "messageType": "event",
             "data": event.description,
         }
-        try:
-            message = OutMsg(**message)
-            mb.emit(f"things/{self.id}/event", message)
-        except ValidationError as e:
-            logger.error(str(e))
+        # try:
+        #     message = OutMsg(**message)
+        mb.emit(f"things/{self.id}/event", message)
+        # except ValidationError as e:
+        #     logger.error(str(e))
 
     def add_owner(self, owner: str):
         """

@@ -89,6 +89,8 @@ class Mqtt:
 
     async def _publish(self, topic: str, payload: dict, retain=False):
         logger.debug(retain)
+        if 'values' in topic:
+            payload = payload.get("data")
         await self.publish(topic, payload, retain=retain)
 
     async def publish(self, topic, payload, retain=False, qos=1, content_type='json',

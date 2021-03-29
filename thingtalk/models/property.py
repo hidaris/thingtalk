@@ -45,21 +45,20 @@ class Property:
         self._href_prefix = ""
         self._href = f"/properties/{self._name}"
         self._media_type = "application/json"
-        logger.debug(value)
         self.initial_value(value)
 
     def initial_value(self, value):
         if value is None:
             if self.metadata["type"] in ["integer", "number"]:
-                self.value = 0
+                self._value = 0
             elif self.metadata["type"] == "string":
-                self.value = ""
+                self._value = ""
             elif self.metadata["type"] == "object":
-                self.value = {}
+                self._value = {}
             elif self.metadata["type"] == "array":
-                self.value = []
+                self._value = []
             elif self.metadata["type"] == "boolean":
-                self.value = True
+                self._value = True
 
     def validate_value(self, value, is_sync=False):
         """
