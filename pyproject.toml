@@ -41,7 +41,7 @@ async-cron = "^1.6.2"
 gmqtt = "^0.6.9"
 dynaconf = "^3.1.2"
 click = "^7.1.2"
-rich = "^9.10.0"
+rich = "^10.0.0"
 cached-property = { version = "^1.5", python = "~3.7"}
 
 [tool.poetry.dev-dependencies]

@@ -72,3 +72,43 @@ async def websocket_endpoint(websocket: WebSocket):
                     mb.remove_listener(topic, send)
             del subscribe_table[id(websocket)]
             logger.info(f"remove listener send of websocket {id(websocket)}")
+
+
+@router.websocket("/things/{thing_id}")
+async def websocket_endpoint(websocket: WebSocket, thing_id: str):
+    await websocket.accept()
+
+    send = partial(send_data, websocket)
+    subscribe_topics = []
+
+    try:
+        logger.info(f"subscribe topic things/{thing_id}/state things/{thing_id}/event things/{thing_id}/error")
+
+        for topic_type in ["state", "event", "error"]:
+            subscribe_topic = f"things/{thing_id}/{topic_type}"
+            mb.on(subscribe_topic, send)
+            subscribe_topics.append(subscribe_topic)
+            subscribe_table.update({id(websocket): subscribe_topics})
+
+        while True:
+            receive_message = await websocket.receive_json()
+            logger.info(f"websocket {id(websocket)} receive message {receive_message}")
+
+            try:
+                message = InputMsg(**receive_message)
+            except ValidationError as e:
+                logger.error(e.json())
+                await websocket.send_json(e.json(), mode="binary")
+                continue
+            # msg_type = message.messageType
+            mb.emit(message.topic, message)
+
+    except (WebSocketDisconnect, ConnectionClosedOK) as e:
+        logger.info(f"websocket {id(websocket)} was closed with code {e}")
+        topics = subscribe_table.get(id(websocket))
+        if topics:
+            for topic in topics:
+                if send in mb.listeners(topic):
+                    mb.remove_listener(topic, send)
+            del subscribe_table[id(websocket)]
+            logger.info(f"remove listener send of websocket {id(websocket)}")
