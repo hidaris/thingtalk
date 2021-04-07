@@ -51,7 +51,7 @@ class Mqtt:
         await self.sub_client.set_app(app)
         await self.pub_client.set_app(app)
 
-        # single thing
+        # single or multiple thing
         @mb.on("register")
         def on_register(thing_id: str, des):
             logger.debug("register")
@@ -74,7 +74,7 @@ class Mqtt:
         # gateway
         @mb.on("discover")
         def on_discover(thing_id: str, des):
-            mb.on(f"things/{thing_id}/set", partial(self._publish, f"things/{thing_id}/state"))
+            mb.on(f"things/{thing_id}/set", partial(self._publish, f"things/{thing_id}/set"))
             mb.on(f"things/{thing_id}/request_action", partial(self._publish, f"things/{thing_id}/error"))
 
             @mb.on(f"things/{thing_id}/get")
@@ -115,13 +115,14 @@ class Mqtt:
         logger.info(f"[CONNECTED {client._client_id}]")
 
     async def on_message(self, client: Client, topic, payload, qos, properties):
-        logger.info(
-            f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
-
-        if client.app.state.mode == "gateway":
-            logger.debug("gateway")
-            if topic == 'thingtalk/+/config':
-                pass
+        pass
+        # logger.info(
+        #     f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
+        #
+        # if client.app.state.mode == "gateway":
+        #     logger.debug("gateway")
+        #     if topic == 'thingtalk/+/config':
+        #         pass
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")

@@ -25,8 +25,8 @@ class MqttAction(Action):
 class MqttThing(Thing):
     async def property_action(self, property_):
         await mqtt.publish(
-            f"/things/{self.id}/properties",
-            {property_.name: await property_.get_value()},
+            f"/things/{self.id}/set",
+            {property_.name: property_.value},
         )
 
 
@@ -35,7 +35,7 @@ class ThingMqtt(Mqtt):
         logger.info(f"[CONNECTED {client._client_id}]")
         client_ids = client._client_id.split(":")
         if client_ids[0] == "sub_client":
-            if client.app.state.mode == "gateway":
+            if client.app.state.mode in ["gateway", "multiple"]:
                 client.subscribe("things/#", qos=1, subscription_identifier=1)
             else:
                 thing_id = client.app.state.thing.get_thing().id
@@ -45,11 +45,11 @@ class ThingMqtt(Mqtt):
         """logger.info(
             f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}"
         )"""
-        """ logger.debug(topic) """
         topic_words = topic.split("/")
-        logger.debug(f"current mode {client.app.state.mode}")
-        logger.debug(topic)
-        logger.debug(payload)
+        # if topic_words[0] == "things":
+        #     logger.debug(f"current mode {client.app.state.mode}")
+        #     logger.debug(topic)
+        #     logger.debug(payload)
 
         if client.app.state.mode == "gateway":
             """ logger.debug(topic_words) """
@@ -120,6 +120,35 @@ class ThingMqtt(Mqtt):
 
             if len(topic_words) == 3 and topic_words[2] == "request_action":
                 thing = client.app.state.thing.get_thing()
+                id_ = payload.get("id")
+                for action_name, action_params in payload.items():
+                    if action_name == "id":
+                        continue
+
+                    input_ = None
+                    if "input" in action_params:
+                        input_ = action_params["input"]
+
+                    if id_:
+                        action = await thing.perform_action(action_name, input_, id_)
+                    else:
+                        action = await thing.perform_action(action_name, input_)
+
+                    if action:
+                        asyncio.create_task(action.start())
+
+        if client.app.state.mode == "multiple":
+            if len(topic_words) == 3 and topic_words[0] == "things" and topic_words[2] == "set":
+                payload = json.loads(payload)
+                thing = client.app.state.things.get_thing(topic_words[1])
+                for name, value in payload.items():
+                    await thing.set_property(name, value)
+
+            if len(topic_words) == 3 and topic_words[0] == "things" and topic_words[2] == "get":
+                pass
+
+            if len(topic_words) == 3 and topic_words[0] == "things" and topic_words[2] == "request_action":
+                thing = client.app.state.things.get_thing(topic_words[1])
                 id_ = payload.get("id")
                 for action_name, action_params in payload.items():
                     if action_name == "id":

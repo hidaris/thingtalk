@@ -375,7 +375,7 @@ class Thing:
         if not prop:
             logger.warning(f"{self._title} doesn't support {property_name}")
             return
-        logger.info(f"sync {self._title}'s property {property_name} to {value}")
+        logger.info(f"sync {self._title} {self.id}'s property {property_name} to {value}")
         try:
             prop.value = value
             await self.property_notify({property_name: value})
@@ -388,6 +388,7 @@ class Thing:
         property_name -- name of the property to set
         value -- value to set
         """
+        logger.info(f"id {self.id}")
         for property_name, value in tuple(data.items()):
             prop = self.find_property(property_name)
             if not prop:

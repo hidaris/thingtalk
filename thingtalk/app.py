@@ -51,17 +51,17 @@ async def stop_mdns():
     zeroconf.close()
 
 
-@app.on_event("startup")
-async def startup():
-    await mqtt.set_app(app)
-    await mqtt.connect()
-    await app.state.things.add_thing(server)
+# @app.on_event("startup")
+# async def startup():
+#     await mqtt.set_app(app)
+#     await mqtt.connect()
+    # await app.state.things.add_thing(server)
 
 
-@app.on_event("shutdown")
-async def shutdown():
-    await mqtt.disconnect()
-    mb.remove_all_listeners()
+# @app.on_event("shutdown")
+# async def shutdown():
+#     await mqtt.disconnect()
+#     mb.remove_all_listeners()
 
 
 restapi = APIRouter()

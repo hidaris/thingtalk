@@ -69,6 +69,7 @@ class MultipleThings:
         await thing.subscribe_broadcast()
 
     async def add_thing(self, thing: Thing):
+        logger.debug("add_thing")
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
         if self.name == "gateway":
