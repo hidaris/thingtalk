@@ -1,12 +1,11 @@
-site_name: ThingTalk
+site_name: thingTalk
 repo_url: https://github.com/hidaris/thingtalk
 repo_name: hidaris/thingtalk
 
 nav:
-  - Home: index.md
-  - About: about.md
-  - Doc:
-      - T1: index.md
+  - Intro: index.md
+  - User Guide:
+      - First Steps: index.md
       - T2: about.md
 
 theme:

@@ -32,7 +32,7 @@ async def get_property(
     :return: UJSONResponse
     """
     return UJSONResponse(
-        {property_name: await thing.get_property(property_name), }
+        {property_name: thing.get_property(property_name), }
     )
 
 
@@ -52,9 +52,7 @@ async def put_property(
         await thing.set_property(property_name, data[property_name])
     except PropertyError:
         raise HTTPException(status_code=400)
-    from loguru import logger
-    logger.debug(thing.id)
-    logger.debug(property_name)
+
     return UJSONResponse(
         {property_name: thing.get_property(property_name), }
     )

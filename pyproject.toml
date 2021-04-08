@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thingtalk"
-version = "0.7.16"
+version = "0.8.0"
 description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 authors = ["hidaris <zuocool@gmail.com>"]
 readme = "README.md"
@@ -55,9 +55,3 @@ docs = ["mkdocs-material"]
 
 [tool.poetry.scripts]
 thingtalk = 'thingtalk.cli:thingtalk'
-
-[[tool.poetry.source]]
-name = "tuna"
-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
-default = true
-

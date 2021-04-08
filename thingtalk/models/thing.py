@@ -336,7 +336,7 @@ class Thing:
         Get a mapping of all properties and their values.
         Returns a dictionary of property_name -> value.
         """
-        return {prop.name: await prop.get_value() for prop in self.properties.values()}
+        return {prop.name: prop.value for prop in self.properties.values()}
 
     def has_property(self, property_name):
         """

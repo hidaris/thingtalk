@@ -1,46 +1,25 @@
-<h1 align="center">Project ThingTalk</h1>
+<h1 align="center">Project thingTalk</h1>
 
 <h2 align="center">Thing as a Service</h2>
 
 [![pypi-v](https://img.shields.io/pypi/v/thingtalk.svg)](https://pypi.python.org/pypi/thingtalk)
 [![python](https://img.shields.io/pypi/pyversions/thingtalk.svg)](https://github.com/hidaris/thingtalk)
 
----
+## What is `thingTalk`?
+`thingTalk` is a web of things implementation, currently supporting a dialect protocol called webthings.
 
-**Documentation**: <a href="https://fastapi.tiangolo.com" target="_blank">https://fastapi.tiangolo.com</a>
+## Project Vision:
+To provide a communication layer for spatial computing, and make iot interoperable with xr.
 
-**Source Code**: <a href="https://github.com/tiangolo/fastapi" target="_blank">https://github.com/tiangolo/fastapi</a>
+### The key features are:
+* Layered design -- Provide services such as rule engines on top of the core protocol layer.
+* Scalability -- Can be based on MQTT to achieve distributed deployment.
+* Standards-based -- Compatibility with community standards[WoT].
+* Fast: Very high performance, on par with NodeJS and Go (thanks to FastAPI).
+* Robust: Get production-ready code. With automatic interactive documentation.
+* Fast to code: Increase the speed to develop features by about 200% to 300%. *
 
----
+## Installation
+thingtalk can be installed via pip, as such:
 
-## What is `thingtalk` ?
-`thingtalk` is a library for the Web of Things protocol in Python Asyncio. This library is derived of webthing-python project (supporting Tornado) but adapted for fastapi (based on Uvicorn for better performance).
-
-
-The key features are:
-
-* **Fast**: Very high performance, on par with **NodeJS** and **Go** (thanks to Starlette and Pydantic). [One of the fastest Python frameworks available](#performance).
-
-* **Fast to code**: Increase the speed to develop features by about 200% to 300%. *
-* **Fewer bugs**: Reduce about 40% of human (developer) induced errors. *
-* **Intuitive**: Great editor support. <abbr title="also known as auto-complete, autocompletion, IntelliSense">Completion</abbr> everywhere. Less time debugging.
-* **Easy**: Designed to be easy to use and learn. Less time reading docs.
-* **Short**: Minimize code duplication. Multiple features from each parameter declaration. Fewer bugs.
-* **Robust**: Get production-ready code. With automatic interactive documentation.
-* **Standards-based**: Based on (and fully compatible with) the open standards for APIs: <a href="https://github.com/OAI/OpenAPI-Specification" class="external-link" target="_blank">OpenAPI</a> (previously known as Swagger) and <a href="https://json-schema.org/" class="external-link" target="_blank">JSON Schema</a>.
-
-<small>* estimation based on tests on an internal development team, building production applications.</small>
-
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+`$ pip install thingtalk`

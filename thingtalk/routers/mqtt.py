@@ -31,15 +31,17 @@ class MqttThing(Thing):
 
 
 class ThingMqtt(Mqtt):
+
+    async def connect(self):
+        await super().connect()
+        if self.sub_client.app.state.mode in ["gateway", "multiple"]:
+            self.sub_client.subscribe("things/#", qos=1, subscription_identifier=1)
+        else:
+            thing_id = self.sub_client.app.state.thing.get_thing().id
+            self.sub_client.subscribe(f"things/{thing_id}/#", qos=1, subscription_identifier=1)
+
     def on_connect(self, client: Client, flags, rc, properties):
         logger.info(f"[CONNECTED {client._client_id}]")
-        client_ids = client._client_id.split(":")
-        if client_ids[0] == "sub_client":
-            if client.app.state.mode in ["gateway", "multiple"]:
-                client.subscribe("things/#", qos=1, subscription_identifier=1)
-            else:
-                thing_id = client.app.state.thing.get_thing().id
-                client.subscribe(f"things/{thing_id}/#", qos=1, subscription_identifier=1)
 
     async def on_message(self, client: Client, topic: str, payload, qos, properties):
         """logger.info(
@@ -53,6 +55,8 @@ class ThingMqtt(Mqtt):
 
         if client.app.state.mode == "gateway":
             """ logger.debug(topic_words) """
+            if "td" in topic:
+                logger.debug(topic)
             if len(topic_words) == 3 and topic_words[2] == "td":
                 payload = json.loads(payload)
                 thing = MqttThing(
@@ -81,6 +85,7 @@ class ThingMqtt(Mqtt):
                         schema = metadata
 
                     thing.add_available_event(MqttEvent)
+                thing.href_prefix = f"/things/{thing.id}"
                 await client.app.state.things.discover(thing)
 
                 # mb.emit(f"things/{thing.id}/get", {})
@@ -88,25 +93,28 @@ class ThingMqtt(Mqtt):
             if len(topic_words) == 3 and topic_words[2] == "values":
                 payload = json.loads(payload)
                 thing = client.app.state.things.get_thing(topic_words[1])
-                for name, value in payload.items():
-                    await thing.sync_property(name, value)
+                if thing:
+                    for name, value in payload.items():
+                        await thing.sync_property(name, value)
 
             if len(topic_words) == 3 and topic_words[2] == "actions":
                 payload = json.loads(payload)
                 thing = client.app.state.thing.get_thing(topic_words[1])
-                for key, value in payload.items():
-                    href = value.get("href")
-                    href_words = href.split("/")
-                    action = thing.get_action(key, href_words[4])
-                    if action:
-                        action.set_description(payload)
+                if thing:
+                    for key, value in payload.items():
+                        href = value.get("href")
+                        href_words = href.split("/")
+                        action = thing.get_action(key, href_words[4])
+                        if action:
+                            action.set_description(payload)
             if len(topic_words) == 3 and topic_words[2] == "events":
                 payload = json.loads(payload)
                 thing = client.app.state.thing.get_thing(topic_words[1])
-                for name, data in payload.get("data").items():
-                    evt = Event(title=name, data=data)
-                    evt.time = data.get("timestamp")
-                    await thing.add_event(evt)
+                if thing:
+                    for name, data in payload.get("data").items():
+                        evt = Event(title=name, data=data)
+                        evt.time = data.get("timestamp")
+                        await thing.add_event(evt)
 
         if client.app.state.mode == "single":
             if len(topic_words) == 3 and topic_words[2] == "set":
