@@ -26,8 +26,7 @@ class Mqtt:
                  token: str = '',
                  username: str = '',
                  password: str = ''):
-        self.sub_client = Client(f"sub_client:{uuid.uuid4().hex}",
-                                 session_expiry_interval=600)
+        self.sub_client = Client(f"sub_client:{uuid.uuid4().hex}")
         self.pub_client = Client(f"pub_client:{uuid.uuid4().hex}")
 
         self.assign_callbacks_to_client(self.sub_client)
@@ -116,13 +115,6 @@ class Mqtt:
 
     async def on_message(self, client: Client, topic, payload, qos, properties):
         pass
-        # logger.info(
-        #     f"[RECV MSG {client._client_id}] TOPIC: {topic} PAYLOAD: {payload} QOS: {qos} PROPERTIES: {properties}")
-        #
-        # if client.app.state.mode == "gateway":
-        #     logger.debug("gateway")
-        #     if topic == 'thingtalk/+/config':
-        #         pass
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")
