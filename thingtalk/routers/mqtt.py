@@ -17,15 +17,15 @@ from ..models.event import Event
 class MqttAction(Action):
     async def perform_action(self):
         mb.emit(
-            f"/things/{self.thing.id}/request_action",
+            f"things/{self.thing.id}/request_action",
             {"id": self.id, self.title: self.input}
         )
 
 
 class MqttThing(Thing):
     async def property_action(self, property_):
-        await mqtt.publish(
-            f"/things/{self.id}/set",
+        mb.emit(
+            f"things/{self.id}/set",
             {property_.name: property_.value},
         )
 
@@ -86,7 +86,7 @@ class ThingMqtt(Mqtt):
 
                     thing.add_available_event(MqttEvent)
                 thing.href_prefix = f"/things/{thing.id}"
-                await client.app.state.things.discover(thing)
+                await client.app.state.things.add_thing(thing)
 
                 # mb.emit(f"things/{thing.id}/get", {})
 

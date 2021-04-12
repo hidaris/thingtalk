@@ -93,14 +93,13 @@ async def websocket_endpoint(websocket: WebSocket, thing_id: str):
         while True:
             receive_message = await websocket.receive_json()
             logger.info(f"websocket {id(websocket)} receive message {receive_message}")
-
+            receive_message.update({"topic": f"things/{thing_id}"})
             try:
                 message = InputMsg(**receive_message)
             except ValidationError as e:
                 logger.error(e.json())
                 await websocket.send_json(e.json(), mode="binary")
                 continue
-            # msg_type = message.messageType
             mb.emit(message.topic, message)
 
     except (WebSocketDisconnect, ConnectionClosedOK) as e:

@@ -398,7 +398,6 @@ class Thing:
             logger.info(f"sync {self._title}'s property {property_name} to {value}")
             try:
                 prop.value = value
-                # await prop.set_value(value, with_action=False)
             except PropertyError as e:
                 del data[property_name]
                 await self.error_notify(str(e))
