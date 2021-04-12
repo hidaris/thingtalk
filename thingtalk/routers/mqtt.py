@@ -35,10 +35,10 @@ class ThingMqtt(Mqtt):
     async def connect(self):
         await super().connect()
         if self.sub_client.app.state.mode in ["gateway", "multiple"]:
-            self.sub_client.subscribe("things/#", qos=1, subscription_identifier=1)
+            self.sub_client.subscribe("things/#", qos=1, subscription_identifier=1, retain_as_published=True)
         else:
             thing_id = self.sub_client.app.state.thing.get_thing().id
-            self.sub_client.subscribe(f"things/{thing_id}/#", qos=1, subscription_identifier=1)
+            self.sub_client.subscribe(f"things/{thing_id}/#", qos=1, subscription_identifier=1, retain_as_published=True)
 
     def on_connect(self, client: Client, flags, rc, properties):
         logger.info(f"[CONNECTED {client._client_id}]")
