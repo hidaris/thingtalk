@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from ..thingtalk.rule_engine import (
     RuleEngine, Rule, And, Conclusion, Question
 )
-from ..thingtalk.toolkits.event_bus import ee
+from ..thingtalk.toolkits.event_bus import mb
 from ..thingtalk.schema import OutMsg
 
 re = RuleEngine()
@@ -51,10 +51,10 @@ async def test_compute_rule():
             "action": "shake"
         }
     }
-    assert ee.listeners("things/0x00158d0005483fc1/state") == [re.compute_rule]
+    assert mb.listeners("things/0x00158d0005483fc1/state") == [re.compute_rule]
     try:
         msg = OutMsg(**msg)
-        ee.emit("things/0x00158d0005483fc1/state", msg)
+        mb.emit("things/0x00158d0005483fc1/state", msg)
     except ValidationError as e:
         pass
     await re.compute_rule(msg)
