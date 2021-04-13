@@ -1,7 +1,7 @@
-from ..thingtalk import Value, Thing, Property, Event, Action
-from ..thingtalk.app import app
-
 import time
+
+from ..thingtalk import Thing, Property, Event, Action, SingleThing
+from ..thingtalk.app import app
 
 
 class OverheatedEvent(Event):
@@ -39,8 +39,8 @@ class Fade(Action):
 
     async def perform_action(self):
         time.sleep(self.input["duration"] / 1000)
-        await self._thing.set_property("brightness", self.input["brightness"])
-        await self._thing.add_event(OverheatedEvent(102))
+        await self.thing.set_property("brightness", self.input["brightness"])
+        await self.thing.add_event(OverheatedEvent(102))
 
 
 class Light(Thing):
@@ -57,7 +57,7 @@ class Light(Thing):
         self.add_property(
             Property(
                 "on",
-                Value(True),
+                value=True,
                 metadata={
                     "@type": "OnOffProperty",
                     "title": "On/Off",
@@ -70,7 +70,7 @@ class Light(Thing):
         self.add_property(
             Property(
                 "brightness",
-                Value(50),
+                value=50,
                 metadata={
                     "@type": "BrightnessProperty",
                     "title": "Brightness",
@@ -93,4 +93,10 @@ class Light(Thing):
 
 
 light = Light()
-app.state.things.things.update({light.id: light})
+app.state.mode = "single"
+
+
+@app.on_event("startup")
+async def on_startup():
+    app.state.thing = SingleThing(light)
+
