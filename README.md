@@ -25,4 +25,4 @@ thingtalk can be installed via pip, as such:
 `$ pip install thingtalk`
 
 # Thanks
-<a href="https://www.jetbrains.com/?from=thingTalk"><img src="https://github.com/hidaris/thingtalk/tree/master/docs/images/jetbrains-variant-2.png" height="120" alt="JetBrains"/></a>
+<a href="https://www.jetbrains.com/?from=thingTalk"><img src="https://github.com/hidaris/thingtalk/blob/master/docs/images/jetbrains-variant-2.png" height="120" alt="JetBrains"/></a>
