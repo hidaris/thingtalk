@@ -13,7 +13,7 @@ async def get_thing(request: Request, thing_id: str):
         things = request.app.state.things
         thing = things.get_thing(thing_id)
     else:
-        thing = request.app.state.thing.get_thing()
+        thing = request.app.state.things.get_thing()
     if thing is None:
         raise HTTPException(status_code=404)
     return thing

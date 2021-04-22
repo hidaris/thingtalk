@@ -100,7 +100,7 @@ class ThingMqtt(Mqtt):
 
             if len(topic_words) == 3 and topic_words[2] == "actions":
                 payload = json.loads(payload)
-                thing = client.app.state.thing.get_thing(topic_words[1])
+                thing = client.app.state.things.get_thing(topic_words[1])
                 if thing:
                     for key, value in payload.items():
                         href = value.get("href")
@@ -110,7 +110,7 @@ class ThingMqtt(Mqtt):
                             action.set_description(payload)
             if len(topic_words) == 3 and topic_words[2] == "events":
                 payload = json.loads(payload)
-                thing = client.app.state.thing.get_thing(topic_words[1])
+                thing = client.app.state.things.get_thing(topic_words[1])
                 if thing:
                     for name, data in payload.get("data").items():
                         evt = Event(title=name, data=data)
@@ -120,7 +120,7 @@ class ThingMqtt(Mqtt):
         if client.app.state.mode == "single":
             if len(topic_words) == 3 and topic_words[2] == "set":
                 payload = json.loads(payload)
-                thing = client.app.state.thing.get_thing()
+                thing = client.app.state.things.get_thing()
                 for name, value in payload.items():
                     await thing.set_property(name, value)
 
@@ -128,7 +128,7 @@ class ThingMqtt(Mqtt):
                 pass
 
             if len(topic_words) == 3 and topic_words[2] == "request_action":
-                thing = client.app.state.thing.get_thing()
+                thing = client.app.state.things.get_thing()
                 id_ = payload.get("id")
                 for action_name, action_params in payload.items():
                     if action_name == "id":

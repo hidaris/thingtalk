@@ -16,8 +16,8 @@ from zeroconf import Zeroconf, ServiceInfo
 
 from .routers.mqtt import ThingMqtt
 from .utils import get_ip
-from .models.thing import Server
-from .models.containers import MultipleThings
+from .models.thing import Server, Thing
+from .models.containers import MultipleThings, SingleThing
 from .toolkits import mb
 
 
@@ -58,6 +58,7 @@ class ThingTalk(FastAPI):
             include_in_schema: bool = True,
             mode: str = "single",
             mqtt: Optional[ThingMqtt] = None,
+            thing: Optional[Thing] = None,
             **extra: Any) -> None:
         super().__init__(debug=debug, routes=routes, title=title, description=description, version=version,
                          openapi_url=openapi_url, openapi_tags=openapi_tags, servers=servers, dependencies=dependencies,
@@ -68,14 +69,16 @@ class ThingTalk(FastAPI):
                          openapi_prefix=openapi_prefix, root_path=root_path, root_path_in_servers=root_path_in_servers,
                          responses=responses, callbacks=callbacks, deprecated=deprecated,
                          include_in_schema=include_in_schema, **extra)
-        self.mode = mode
-        self.mqtt = mqtt
+        self.state.mode = mode
+        self.state.mqtt = mqtt
 
-        if self.mode == "gateway":
+        if mode in ["gateway", "multiple"]:
             assert mqtt is not None, "if running mode is gateway, mqtt shouldn't be none"
+            self.state.things = MultipleThings({}, self.state.mode)
+        else:
+            assert thing is not None, "if running mode is single, parameter thing shouldn't be none"
+            self.state.things = SingleThing(thing)
 
-        self.state.things = MultipleThings({}, "gateway")
-        self.state.mode = self.mode
         self.post_init()
 
     def post_init(self):
@@ -111,15 +114,15 @@ class ThingTalk(FastAPI):
             """Stop inner message bus"""
             mb.remove_all_listeners()
 
-        if self.mode == "gateway":
+        if self.state.mode in ["gateway", "multiple"]:
             @self.on_event("startup")
             async def on_startup():
-                await self.mqtt.set_app(self)
-                await self.mqtt.connect()
+                await self.state.mqtt.set_app(self)
+                await self.state.mqtt.connect()
 
             @self.on_event("shutdown")
             async def on_shutdown():
-                await self.mqtt.disconnect()
+                await self.state.mqtt.disconnect()
 
 
 # server = Server()

@@ -47,7 +47,7 @@ async def get_things(request: Request) -> UJSONResponse:
 
         return UJSONResponse(descriptions)
     else:
-        thing = request.app.state.thing.get_thing()
+        thing = request.app.state.things.get_thing()
         description = thing.as_thing_description()
 
         description["links"].append(
