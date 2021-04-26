@@ -95,9 +95,13 @@ class Mqtt:
     async def publish(self, topic, payload, retain=False, qos=1, content_type='json',
                       message_expiry_interval=60, topic_alias=1, user_property=('time', str(time.time()))):
         # just another way to publish same message
-        self.pub_client.publish(topic, payload, qos=qos, content_type=content_type,
-                                message_expiry_interval=message_expiry_interval, topic_alias=topic_alias,
-                                user_property=user_property, retain=retain)
+        if retain:
+            self.pub_client.publish(topic, payload, qos=qos, content_type=content_type,
+                                    topic_alias=topic_alias, user_property=user_property, retain=retain)
+        else:
+            self.pub_client.publish(topic, payload, qos=qos, content_type=content_type,
+                                    message_expiry_interval=message_expiry_interval, topic_alias=topic_alias,
+                                    user_property=user_property, retain=retain)
 
     async def disconnect(self):
         await self.pub_client.disconnect()
