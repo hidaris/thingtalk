@@ -3,7 +3,7 @@ import re
 import socket
 import time
 from fastapi.testclient import TestClient
-from ..example.test_light import app
+from . import app
 
 _TIME_REGEX = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
 _PROTO = "http"

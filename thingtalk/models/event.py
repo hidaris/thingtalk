@@ -1,4 +1,5 @@
 """High-level Event base class implementation."""
+import loguru
 
 try:
     from functools import cached_property
@@ -31,6 +32,9 @@ class Event:
 
         if schema:
             self.schema = schema
+
+        loguru.logger.debug(self.title)
+        loguru.logger.debug(self._data)
 
     @cached_property
     def description(self):

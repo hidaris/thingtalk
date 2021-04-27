@@ -1,7 +1,10 @@
 import time
 
+from fastapi import APIRouter
+
 from ..thingtalk import Thing, Property, Event, Action, SingleThing
-from ..thingtalk.app import app
+from ..thingtalk.app import ThingTalk
+from ..thingtalk.routers import things, websockets, properties, events, actions
 
 
 class OverheatedEvent(Event):
@@ -93,10 +96,38 @@ class Light(Thing):
 
 
 light = Light()
-app.state.mode = "single"
 
+# mqtt = ThingMqtt("127.0.0.1", "1883")
 
-@app.on_event("startup")
-async def on_startup():
-    app.state.thing = SingleThing(light)
+app = ThingTalk(
+    title="Zigbee adapter",
+    version="0.1.0",
+    description="Zigbee 🐝 to WoT bridge 🌉, get rid of your proprietary Zigbee bridges",
+    mode="single",
+    thing=light
+)
 
+restapi = APIRouter()
+
+restapi.include_router(things.router, tags=["thing"])
+restapi.include_router(
+    properties.router,
+    prefix="/things/{thing_id}",
+    tags=["property"],
+    responses={404: {"description": "Not found"}},
+)
+restapi.include_router(
+    actions.router,
+    prefix="/things/{thing_id}",
+    tags=["action"],
+    responses={404: {"description": "Not found"}},
+)
+restapi.include_router(
+    events.router,
+    prefix="/things/{thing_id}",
+    tags=["event"],
+    responses={404: {"description": "Not found"}},
+)
+
+app.include_router(restapi)
+app.include_router(websockets.router)

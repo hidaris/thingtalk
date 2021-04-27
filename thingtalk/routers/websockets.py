@@ -22,7 +22,7 @@ router = APIRouter()
 async def send_data(websocket: WebSocket, data: OutMsg):
     if websocket.application_state == WebSocketState.CONNECTED:
         try:
-            await websocket.send_json(data.dict(), mode='binary')
+            await websocket.send_json(data, mode='binary')
         except (WebSocketDisconnect, ConnectionClosedOK, ConnectionClosedError) as e:
             logger.debug(e)
     else:
@@ -33,7 +33,7 @@ subscribe_table = {}
 
 
 @router.websocket("/channel")
-async def websocket_endpoint(websocket: WebSocket):
+async def multiple_websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
     send = partial(send_data, websocket)
@@ -55,7 +55,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if msg_type == "subscribe":
                 for thing_id in message.data.get("thing_ids", []):
                     logger.info(f"subscribe topic things/{thing_id}/state things/{thing_id}/event things/{thing_id}/error")
-                    for topic_type in ["state", "event", "error"]:
+                    for topic_type in ["values", "actions", "event", "error"]:
                         subscribe_topic = f"things/{thing_id}/{topic_type}"
                         mb.on(subscribe_topic, send)
                         subscribe_topics.append(subscribe_topic)
@@ -75,7 +75,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @router.websocket("/things/{thing_id}")
-async def websocket_endpoint(websocket: WebSocket, thing_id: str):
+async def single_websocket_endpoint(websocket: WebSocket, thing_id: str):
     await websocket.accept()
 
     send = partial(send_data, websocket)

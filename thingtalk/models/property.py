@@ -59,6 +59,8 @@ class Property:
                 self._value = []
             elif self.metadata["type"] == "boolean":
                 self._value = True
+        else:
+            self._value = value
 
     def validate_value(self, value, is_sync=False):
         """
