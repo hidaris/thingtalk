@@ -12,7 +12,7 @@ from fastapi.params import Depends
 from fastapi.datastructures import Default
 
 from loguru import logger
-from zeroconf import Zeroconf, ServiceInfo
+from zeroconf.asyncio import AsyncZeroconf, ServiceInfo
 
 from .routers.mqtt import ThingMqtt
 from .utils import get_ip
@@ -82,7 +82,7 @@ class ThingTalk(FastAPI):
         self.post_init()
 
     def post_init(self):
-        zeroconf = Zeroconf()
+        zeroconf = AsyncZeroconf()
 
         @self.on_event("startup")
         async def start_mdns():
@@ -101,13 +101,13 @@ class ThingTalk(FastAPI):
                 "addresses": [socket.inet_aton(get_ip())],
             }
             self.state.service_info = ServiceInfo(*args, **kwargs)
-            zeroconf.register_service(self.state.service_info)
+            await zeroconf.async_register_service(self.state.service_info)
 
         @self.on_event("shutdown")
         async def stop_mdns():
             """Stop listening."""
-            zeroconf.unregister_service(self.state.service_info)
-            zeroconf.close()
+            await zeroconf.async_unregister_service(self.state.service_info)
+            await zeroconf.async_close()
 
         @self.on_event("shutdown")
         async def stop_mb():

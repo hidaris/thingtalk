@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "thingtalk"
-version = "0.8.1"
+version = "0.8.2"
 description = "Web of Things framework, high performance, easy to learn, fast to code, ready for production"
 authors = ["hidaris <zuocool@gmail.com>"]
 readme = "README.md"
@@ -26,15 +26,15 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-fastapi = "^0.63.0"
+fastapi = "^0.65.0"
 uvicorn = {extras = ["standard"], version = "^0.13.0"}
 ujson = "^4.0.0"
 email_validator = "^1.1.1"
-httpx = "^0.17.0"
+httpx = "^0.18.0"
 pyee = "^8.1.0"
 jsonschema = "^3.2.0"
 ifaddr = "^0.1.7"
-zeroconf = "^0.29.0"
+zeroconf = "^0.30.0"
 loguru = "^0.5.2"
 mkdocs-material = { version = "^7.0.0", optional = true }
 async-cron = "^1.6.2"
@@ -46,9 +46,10 @@ cached-property = { version = "^1.5", python = "~3.7"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0"
-pytest-asyncio = "^0.14.0"
+pytest-asyncio = "^0.15.0"
 requests = "^2.24.0"
-black = {version = "^20.8b1", allow-prereleases = true}
+black = {version = "^21.0b1", allow-prereleases = true}
+pylint = "^2.7.4"
 
 [tool.poetry.extras]
 docs = ["mkdocs-material"]
