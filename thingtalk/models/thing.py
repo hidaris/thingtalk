@@ -56,7 +56,7 @@ class Thing:
             self.description = description_
 
         self._id = id_
-        self._context = "https://iot.mozilla.org/schemas"
+        self._context = "https://webthings.io/schemas/"
         self._title = title
         self.properties: Dict[str, Property] = {}
         self.available_actions = {}
