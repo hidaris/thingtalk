@@ -86,4 +86,4 @@ class HTTPRequester(Thing):
 
 with background_thread_loop() as loop:
     app = ThingTalk(loop, Light,
-                    additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).create()
+                    additional_middlewares=[Middleware(CORSMiddleware, allow_origins=['*'])]).post_init()

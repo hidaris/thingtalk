@@ -26,21 +26,21 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-fastapi = "^0.65.0"
-uvicorn = {extras = ["standard"], version = "^0.13.0"}
-ujson = "^4.0.0"
+fastapi = "^0.68.0"
+uvicorn = {extras = ["standard"], version = "^0.15.0"}
+ujson = "^4.1.0"
 email_validator = "^1.1.1"
-httpx = "^0.18.0"
-pyee = "^8.1.0"
+httpx = "^0.19.0"
+pyee = "^8.2.0"
 jsonschema = "^3.2.0"
 ifaddr = "^0.1.7"
-zeroconf = "^0.30.0"
+zeroconf = "^0.36.0"
 loguru = "^0.5.2"
 mkdocs-material = { version = "^7.0.0", optional = true }
 async-cron = "^1.6.2"
 gmqtt = "^0.6.9"
 dynaconf = "^3.1.2"
-click = "^7.1.2"
+click = "^8.0.0"
 rich = "^10.0.0"
 cached-property = { version = "^1.5", python = "~3.7"}
 
