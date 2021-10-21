@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from logging import warning
+from typing import TYPE_CHECKING, Any, Optional
 
 from loguru import logger 
 import * as WoT from "wot-typescript-definitions";
@@ -38,25 +39,16 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
     # A map of interactable Thing Events with emit() function
     events: dict[str, TD.ThingEvent]
 
-    def getServient: () => Servient;
-    def getSubjectTD: () => Subject<WoT.ThingDescription>;
+    def __init__(self, servient: Servient, thingModel: WoT.ExposedThingInit = {}):
+        super().__init__()
 
-    def __init__(self, servient: Servient, thingModel: WoT.ExposedThingInit = {}) {
-        super()
-
-        self.getServient = () => {
-            return servient;
-        }
-        self.getSubjectTD = new (class {
-            subjectTDChange: Subject<WoT.ThingDescription> = new Subject<WoT.ThingDescription>();
-            getSubject = () => {
-                return this.subjectTDChange;
-            };
-        })().getSubject;
+        self.servient = servient
+        
+        self.subjectTD = Subject<WoT.ThingDescription>();
 
         # Deep clone the Thing Model
         # without functions or methods
-        const clonedModel = json.loads(json.dumps(thingModel));
+        clonedModel = json.loads(json.dumps(thingModel));
         Object.assign(this, clonedModel);
 
         # unset "@type":"tm:ThingModel" ?
@@ -87,19 +79,14 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
             arrayContext = thing["@context"]
             languageSet = False
             for arrayEntry in arrayContext:
-                if (typeof arrayEntry === "object") {
-                    if (arrayEntry["@language"] !== undefined) {
-                        languageSet = true;
-                    }
-                }
-            }
-            if (!languageSet) {
-                arrayContext.push({
+                if isinstance(arrayEntry, "object"):
+                    if (arrayEntry["@language"] !== undefined):
+                        languageSet = True
+
+            if not languageSet:
+                arrayContext.append({
                     "@language": TD.DEFAULT_CONTEXT_LANGUAGE,
-                });
-            }
-        }
-    }
+                })
 
     def extendInteractions(self) -> None:
         for propertyName in self.properties:
@@ -115,7 +102,7 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
             self.events[eventName] = newEvent
 
     def getThingDescription(self) -> WoT.ThingDescription:
-        return json.loads(TD.serializeTD(this))
+        return json.loads(TD.serializeTD(self))
 
     def emitEvent(self, name: str, data: Any) -> None:
         if self.events[name]:
@@ -124,193 +111,129 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
                 listener.call(this, data);
         else:
             # NotFoundError
-            throw new Error("NotFoundError for event '" + name + "'");
+            raise Exception("NotFoundError for event '" + name + "'")
 
     # @inheritDoc
-    def expose(self): Promise<void> {
+    def expose(self):
         logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
 
-        return new Promise<void>((resolve, reject) => {
-            // let servient forward exposure to the servers
-            this.getServient()
-                .expose(this)
-                .then(() => {
-                    // inform TD observers
-                    this.getSubjectTD().next(this.getThingDescription());
-                    resolve();
-                })
-                .catch((err) => reject(err));
-        });
-    }
+        # let servient forward exposure to the servers
+        self.servient.expose(self)
+        # inform TD observers
+        self.subjectTD.next(self.getThingDescription())
 
-    /** @inheritDoc */
-    destroy(): Promise<void> {
-        console.debug("[core/exposed-thing]", `ExposedThing '${this.title}' destroying the thing and its interactions`);
+    # @inheritDoc
+    def destroy(self):
+        logger.debug(f'ExposedThing {self.title} destroying the thing and its interactions')
 
-        return new Promise<void>((resolve, reject) => {
-            this.getServient()
-                .destroyThing(this.id)
-                .then(() => {
-                    // indicate to possible subscriptions that subject has been completed
-                    /* for (let propertyName in this.properties) {
-                    let ps: PropertyState = this.properties[propertyName].getState();
-                    if (ps.subject) {
-                        ps.subject.complete();
-                    }
-                }
-                for (let eventName in this.events) {
-                    let es: EventState = this.events[eventName].getState();
-                    if (es.subject) {
-                        es.subject.complete();
-                    }
-                } */
-                    // inform TD observers that thing is gone
-                    this.getSubjectTD().next(null);
-                    // resolve with success
-                    resolve();
-                })
-                .catch((err) => reject(err));
-        });
-    }
+        self.servient.destroyThing(self.id)
+        # inform TD observers that thing is gone
+        self.subjectTD.next(None)
 
-    /** @inheritDoc */
-    setPropertyReadHandler(propertyName: string, handler: WoT.PropertyReadHandler): WoT.ExposedThing {
-        console.debug(
-            "[core/exposed-thing]",
-            `ExposedThing '${this.title}' setting read handler for '${propertyName}'`
-        );
+    # @inheritDoc
+    def setPropertyReadHandler(self, propertyName: str, handler: WoT.PropertyReadHandler) -> WoT.ExposedThing:
+        logger.debug(
+            f'ExposedThing {self.title} setting read handler for {propertyName}'
+        )
 
-        if (this.properties[propertyName]) {
-            // setting read handler for writeOnly not allowed
-            if (this.properties[propertyName].writeOnly) {
-                throw new Error(
-                    `ExposedThing '${this.title}' cannot set read handler for property '${propertyName}' due to writeOnly flag`
-                );
-            } else {
-                // in case of function instead of lambda, the handler is bound to a scope shared with the writeHandler in PropertyState
-                const ps: PropertyState = this.properties[propertyName].getState();
+        if self.properties[propertyName]:
+            # setting read handler for writeOnly not allowed
+            if self.properties[propertyName].writeOnly:
+                raise Exception(
+                    f'ExposedThing {self.title} cannot set read handler for property {propertyName} due to writeOnly flag'
+                )
+            else:
+                # in case of function instead of lambda, the handler is bound to a scope shared with the writeHandler in PropertyState
+                ps: PropertyState = self.properties[propertyName].getState()
                 ps.readHandler = handler.bind(ps.scope);
-            }
-        } else {
-            throw new Error(`ExposedThing '${this.title}' has no Property '${propertyName}'`);
-        }
-        return this;
-    }
+        else:
+            raise Exception(f'ExposedThing {self.title} has no Property {propertyName}')
 
-    /** @inheritDoc */
-    setPropertyWriteHandler(propertyName: string, handler: WoT.PropertyWriteHandler): WoT.ExposedThing {
-        console.debug(
-            "[core/exposed-thing]",
-            `ExposedThing '${this.title}' setting write handler for '${propertyName}'`
-        );
-        if (this.properties[propertyName]) {
-            // Note: setting write handler allowed for readOnly also (see https://github.com/eclipse/thingweb.node-wot/issues/165)
-            // The reason is that it may make sense to define its own "reject"
-            //
-            // in case of function instead of lambda, the handler is bound to a scope shared with the readHandler in PropertyState
-            const ps: PropertyState = this.properties[propertyName].getState();
-            ps.writeHandler = handler.bind(ps.scope);
-        } else {
-            throw new Error(`ExposedThing '${this.title}' has no Property '${propertyName}'`);
-        }
-        return this;
-    }
+        return self
 
-    /** @inheritDoc */
-    setPropertyObserveHandler(name: string, handler: WoT.PropertyReadHandler): WoT.ExposedThing {
-        throw new Error("setPropertyObserveHandler not supported");
-    }
 
-    /** @inheritDoc */
-    setPropertyUnobserveHandler(name: string, handler: WoT.PropertyReadHandler): WoT.ExposedThing {
-        throw new Error("setPropertyUnobserveHandler not supported");
-    }
+    def setPropertyWriteHandler(self, propertyName: str, handler: WoT.PropertyWriteHandler) -> WoT.ExposedThing:
+        logger.debug(
+            f'ExposedThing {self.title} setting write handler for {propertyName}'
+        )
+        if self.properties[propertyName]:
+            # Note: setting write handler allowed for readOnly also (see https://github.com/eclipse/thingweb.node-wot/issues/165)
+            # The reason is that it may make sense to define its own "reject"
+            # in case of function instead of lambda, the handler is bound to a scope shared with the readHandler in PropertyState
+            ps: PropertyState = self.properties[propertyName].getState()
+            ps.writeHandler = handler.bind(ps.scope)
+        else:
+            raise Exception(f'ExposedThing {self.title} has no Property {propertyName}')
 
-    /** @inheritDoc */
-    setActionHandler(actionName: string, handler: WoT.ActionHandler): WoT.ExposedThing {
-        console.debug(
-            "[core/exposed-thing]",
-            `ExposedThing '${this.title}' setting action Handler for '${actionName}'`
-        );
+        return self
 
-        if (this.actions[actionName]) {
-            // in case of function instead of lambda, the handler is bound to a clean scope of the ActionState
-            const as: ActionState = this.actions[actionName].getState();
-            as.handler = handler.bind(as.scope);
-        } else {
-            throw new Error(`ExposedThing '${this.title}' has no Action '${actionName}'`);
-        }
-        return this;
-    }
 
-    /** @inheritDoc */
-    setEventSubscribeHandler(name: string, handler: WoT.EventSubscriptionHandler): WoT.ExposedThing {
-        throw new Error("setEventSubscribeHandler not supported");
-    }
+    def setPropertyObserveHandler(self, name: str, handler: WoT.PropertyReadHandler) -> WoT.ExposedThing:
+        raise Exception("setPropertyObserveHandler not supported")
 
-    /** @inheritDoc */
-    setEventUnsubscribeHandler(name: string, handler: WoT.EventSubscriptionHandler): WoT.ExposedThing {
-        throw new Error("setEventUnsubscribeHandler not supported");
-    }
+    def setPropertyUnobserveHandler(self, name: str, handler: WoT.PropertyReadHandler) -> WoT.ExposedThing:
+        raise Exception("setPropertyUnobserveHandler not supported")
 
-    /** @inheritDoc */
-    setEventHandler(name: string, handler: WoT.EventListenerHandler): WoT.ExposedThing {
-        throw new Error("setEventHandler not supported");
-    }
+    def setActionHandler(self, actionName: str, handler: WoT.ActionHandler) -> WoT.ExposedThing:
+        logger.debug(
+            f'ExposedThing {self.title} setting action Handler for {actionName}'
+        )
 
-    readProperty(propertyName: string, options?: WoT.InteractionOptions): Promise<InteractionOutput> {
-        return new Promise((resolve, reject) => {
-            if (this.properties[propertyName]) {
-                // writeOnly check skipped so far, see https://github.com/eclipse/thingweb.node-wot/issues/333#issuecomment-724583234
-                /* if(this.properties[propertyName].writeOnly && this.properties[propertyName].writeOnly === true) {
-                    reject(new Error(`ExposedThing '${this.title}', property '${propertyName}' is writeOnly`));
-                } */
+        if self.actions[actionName]:
+            # in case of function instead of lambda, the handler is bound to a clean scope of the ActionState
+            _as: ActionState = self.actions[actionName].getState()
+            _as.handler = handler.bind(_as.scope)
+        else:
+            raise Exception(f'ExposedThing {self.title} has no Action {actionName}')
 
-                const ps: PropertyState = this.properties[propertyName].getState();
-                // call read handler (if any)
-                if (ps.readHandler != null) {
-                    console.debug(
-                        "[core/exposed-thing]",
-                        `ExposedThing '${this.title}' calls registered readHandler for Property '${propertyName}'`
-                    );
-                    ps.readHandler(options)
-                        .then((customValue) => {
-                            const body = ExposedThing.interactionInputToReadable(customValue);
-                            let c: Content = { body: body, type: "application/json" };
-                            resolve(new InteractionOutput(c, undefined, this.properties[propertyName]));
-                        })
-                        .catch((err) => {
-                            reject(err);
-                        });
-                } else {
-                    console.debug(
-                        "[core/exposed-thing]",
-                        `ExposedThing '${this.title}' gets internal value '${ps.value}' for Property '${propertyName}'`
-                    );
-                    const body = ExposedThing.interactionInputToReadable(ps.value);
-                    resolve(
-                        new InteractionOutput(
-                            { body, type: "application/json" },
-                            undefined,
-                            this.properties[propertyName]
-                        )
-                    );
-                }
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no property found for '${propertyName}'`));
-            }
-        });
-    }
+        return self
 
-    _readProperties(propertyNames: string[], options?: WoT.InteractionOptions): Promise<WoT.PropertyReadMap> {
-        return new Promise<WoT.PropertyReadMap>((resolve, reject) => {
-            // collect all single promises into array
-            const promises: Promise<InteractionOutput>[] = [];
-            for (const propertyName of propertyNames) {
-                promises.push(this.readProperty(propertyName, options));
-            }
-            // wait for all promises to succeed and create response
-            const output = new Map<string, WoT.InteractionOutput>();
+    def setEventSubscribeHandler(self, name: str, handler: WoT.EventSubscriptionHandler) -> WoT.ExposedThing:
+        raise Exception("setEventSubscribeHandler not supported")
+
+    def setEventUnsubscribeHandler(self, name: str, handler: WoT.EventSubscriptionHandler) -> WoT.ExposedThing:
+        raise Exception("setEventUnsubscribeHandler not supported")
+
+
+    def setEventHandler(self, name: str, handler: WoT.EventListenerHandler) -> WoT.ExposedThing:
+        raise Exception("setEventHandler not supported")
+
+    async def readProperty(self, propertyName: str, options: Optional[WoT.InteractionOptions]) -> InteractionOutput:
+        if self.properties[propertyName]:
+            # writeOnly check skipped so far, see https://github.com/eclipse/thingweb.node-wot/issues/333#issuecomment-724583234
+            # if(this.properties[propertyName].writeOnly && this.properties[propertyName].writeOnly === true) {
+            #    reject(new Error(`ExposedThing '${this.title}', property '${propertyName}' is writeOnly`));
+
+            ps: PropertyState = self.properties[propertyName].getState();
+            # call read handler (if any)
+            if ps.readHandler:
+                logger.debug(
+                    f'ExposedThing {self.title} calls registered readHandler for Property {propertyName}'
+                )
+                customValue = ps.readHandler(options)
+                body = ExposedThing.interactionInputToReadable(customValue)
+                c: Content = { body: body, type: "application/json" }
+                return InteractionOutput(c, undefined, self.properties[propertyName])
+            else:
+                logger.debug(
+                    f'ExposedThing {self.title} gets internal value {ps.value} for Property {propertyName}'
+                )
+                body = ExposedThing.interactionInputToReadable(ps.value);
+                return InteractionOutput(
+                    { body, type: "application/json" },
+                    undefined,
+                    self.properties[propertyName]
+                )
+        else:
+            raise Exception(f'ExposedThing {self.title}, no property found for {propertyName}')
+
+    async _readProperties(self, propertyNames: list[str], options: Optional[WoT.InteractionOptions]) -> WoT.PropertyReadMap:
+        # collect all single promises into array
+        promises: Promise<InteractionOutput>[] = [];
+        for (const propertyName of propertyNames) {
+            promises.push(this.readProperty(propertyName, options));
+        # wait for all promises to succeed and create response
+        output = new Map<string, WoT.InteractionOutput>();
             Promise.all(promises)
                 .then((result) => {
                     let index = 0;
@@ -330,110 +253,80 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
         });
     }
 
-    readAllProperties(options?: WoT.InteractionOptions): Promise<WoT.PropertyReadMap> {
-        const propertyNames: string[] = [];
-        for (const propertyName in this.properties) {
-            propertyNames.push(propertyName);
-        }
-        return this._readProperties(propertyNames, options);
-    }
+    async def readAllProperties(self, options: Optional[WoT.InteractionOptions]) -> WoT.PropertyReadMap:
+        propertyNames: list[str] = []
+        for propertyName in self.properties:
+            propertyNames.append(propertyName)
+        
+        return await self._readProperties(propertyNames, options)
 
-    readMultipleProperties(propertyNames: string[], options?: WoT.InteractionOptions): Promise<WoT.PropertyReadMap> {
-        return this._readProperties(propertyNames, options);
-    }
+    async def readMultipleProperties(self, propertyNames: list[str], options: Optional[WoT.InteractionOptions]) -> WoT.PropertyReadMap:
+        return self._readProperties(propertyNames, options)
 
-    writeProperty(propertyName: string, value: WoT.InteractionInput, options?: WoT.InteractionOptions): Promise<void> {
-        // TODO: to be removed next api does not allow an ExposedThing to be also a ConsumeThing
-        return new Promise<void>((resolve, reject) => {
-            if (this.properties[propertyName]) {
-                // readOnly check skipped so far, see https://github.com/eclipse/thingweb.node-wot/issues/333#issuecomment-724583234
-                /* if (this.properties[propertyName].readOnly && this.properties[propertyName].readOnly === true) {
-                    reject(new Error(`ExposedThing '${this.title}', property '${propertyName}' is readOnly`));
-                } */
+    async def writeProperty(self, propertyName: str, value: WoT.InteractionInput, options: Optional[WoT.InteractionOptions]) -> None:
+        # TODO: to be removed next api does not allow an ExposedThing to be also a ConsumeThing
+        if self.properties[propertyName]:
+            # readOnly check skipped so far, see https://github.com/eclipse/thingweb.node-wot/issues/333#issuecomment-724583234
+            # if (this.properties[propertyName].readOnly && this.properties[propertyName].readOnly === true) {
+            #    reject(new Error(`ExposedThing '${this.title}', property '${propertyName}' is readOnly`));
 
-                const ps: PropertyState = this.properties[propertyName].getState();
+            ps: PropertyState = self.properties[propertyName].getState()
 
-                // call write handler (if any)
-                if (ps.writeHandler != null) {
-                    const body = ExposedThing.interactionInputToReadable(value);
-                    const content = { body: body, type: "application/json" };
-                    // be generous when no promise is returned
-                    const promiseOrValueOrNil = ps.writeHandler(
-                        new InteractionOutput(content, {}, this.properties[propertyName]),
-                        options
-                    );
-                    if (promiseOrValueOrNil !== undefined) {
-                        if (typeof promiseOrValueOrNil.then === "function") {
-                            promiseOrValueOrNil
-                                .then((customValue) => {
-                                    console.debug(
-                                        "[core/exposed-thing]",
-                                        `ExposedThing '${this.title}' write handler for Property '${propertyName}' sets custom value '${customValue}'`
-                                    );
-                                    // notify state change
-                                    // FIXME object comparison
-                                    if (ps.value !== value) {
-                                        for (const listener of ps.listeners) {
-                                            listener.call(value);
-                                        }
-                                    }
-                                    resolve();
-                                })
-                                .catch((customError) => {
-                                    console.warn(
-                                        "[core/exposed-thing]",
-                                        `ExposedThing '${this.title}' write handler for Property '${propertyName}' rejected the write with error '${customError}'`
-                                    );
-                                    reject(customError);
-                                });
-                        } else {
-                            console.warn(
-                                "[core/exposed-thing]",
-                                `ExposedThing '${this.title}' write handler for Property '${propertyName}' does not return promise`
-                            );
-                            if (ps.value !== promiseOrValueOrNil) {
-                                for (const listener of ps.listeners) {
-                                    listener.call(promiseOrValueOrNil);
-                                }
-                            }
-                            resolve();
-                        }
-                    } else {
-                        console.warn(
-                            "[core/exposed-thing]",
-                            `ExposedThing '${this.title}' write handler for Property '${propertyName}' does not return custom value, using direct value '${value}'`
-                        );
-                        if (ps.value !== value) {
-                            for (const listener of ps.listeners) {
-                                listener.call(value);
-                            }
-                        }
-                        resolve();
-                    }
-                } else {
-                    console.debug(
-                        "[core/exposed-thing]",
-                        `ExposedThing '${this.title}' directly sets Property '${propertyName}' to value '${value}'`
-                    );
-                    /** notify state change */
-                    if (ps.value !== value) {
-                        for (const listener of ps.listeners) {
-                            listener.call(value);
-                        }
-                    }
-                    resolve();
-                }
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no property found for '${propertyName}'`));
-            }
-        });
-    }
+            # call write handler (if any)
+            if ps.writeHandler:
+                body = ExposedThing.interactionInputToReadable(value);
+                content = { body: body, type: "application/json" };
+                # be generous when no promise is returned
+                promiseOrValueOrNil = ps.writeHandler(
+                    InteractionOutput(content, {}, self.properties[propertyName]),
+                    options
+                )
+                if promiseOrValueOrNil:
+                    if callable(promiseOrValueOrNil.then):
+                        try:
+                            # promiseOrValueOrNil
+                            #         .then((customValue) => {
+                            logger.debug(
+                                f'ExposedThing {self.title} write handler for Property {propertyName} sets custom value {customValue}'
+                            )
+                            # notify state change
+                            # FIXME object comparison
+                            if ps.value != value:
+                                for listener in ps.listeners:
+                                    listener.call(value)
+                        except Exception as e:
+                            logger.warning(
+                                f'ExposedThing {self.title} write handler for Property {propertyName} rejected the write with error {e}'
+                            )
+                    else:
+                        logger.warning(
+                            f'ExposedThing {self.title} write handler for Property {propertyName} does not return promise'
+                        )
+                        if ps.value != promiseOrValueOrNil:
+                            for listener in ps.listeners:
+                                listener.call(promiseOrValueOrNil)
+                else:
+                    logger.warning(
+                        f'ExposedThing {self.title} write handler for Property {propertyName} does not return custom value, using direct value {value}'
+                    )
+                    if ps.value != value:
+                        for listener in ps.listeners:
+                            listener.call(value)
+            else:
+                logger.debug(
+                    f'ExposedThing {self.title} directly sets Property {propertyName} to value {value}'
+                )
+                # notify state change
+                if ps.value != value:
+                    for listener in ps.listeners:
+                        listener.call(value)
+        else:
+            raise Exception(f'ExposedThing {self.title}, no property found for {propertyName}')
 
-    writeMultipleProperties(valueMap: WoT.PropertyWriteMap, options?: WoT.InteractionOptions): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            // collect all single promises into array
-            const promises: Promise<void>[] = [];
-            for (const propertyName in valueMap) {
+    async def writeMultipleProperties(self, valueMap: WoT.PropertyWriteMap, options: Optional[WoT.InteractionOptions]) -> None:
+        # collect all single promises into array
+        promises: Promise<void>[] = [];
+        for (const propertyName in valueMap) {
                 promises.push(this.writeProperty(propertyName, valueMap.get(propertyName), options));
             }
             // wait for all promises to succeed and create response
@@ -449,119 +342,95 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
         });
     }
 
-    public async invokeAction(
-        actionName: string,
-        parameter?: WoT.InteractionInput,
-        options?: WoT.InteractionOptions
-    ): Promise<InteractionOutput> {
-        if (this.actions[actionName]) {
-            console.debug("[core/exposed-thing]", `ExposedThing '${this.title}' has Action state of '${actionName}'`);
+    async def invokeAction(
+        self,
+        actionName: str,
+        parameter: Optional[WoT.InteractionInput],
+        options: Optional[WoT.InteractionOptions]
+    ) -> InteractionOutput:
+        if self.actions[actionName]:
+            logger.debug(f'ExposedThing {self.title} has Action state of {actionName}')
 
-            const as: ActionState = this.actions[actionName].getState();
-            if (as.handler != null) {
-                console.debug(
-                    "[core/exposed-thing]",
-                    `ExposedThing '${this.title}' calls registered handler for Action '${actionName}'`
-                );
-                let bodyInput;
-                if (parameter) {
-                    bodyInput = ExposedThing.interactionInputToReadable(parameter);
-                }
+            _as: ActionState = self.actions[actionName].getState()
+            if _as.handler:
+                logger.debug(
+                    f'ExposedThing {self.title} calls registered handler for Action {actionName}'
+                )
+                if parameter:
+                    bodyInput = ExposedThing.interactionInputToReadable(parameter)
 
-                let cInput: Content = { body: bodyInput, type: "application/json" };
-                const result = await as.handler(
-                    new InteractionOutput(cInput, undefined, this.actions[actionName].input),
+                cInput: Content = { body: bodyInput, type: "application/json" }
+                result = await _as.handler(
+                    InteractionOutput(cInput, undefined, self.actions[actionName].input),
                     options
-                );
+                )
 
-                let bodyOutput;
-                if (result) {
-                    bodyOutput = ExposedThing.interactionInputToReadable(result);
-                }
-                let cOutput: Content = { body: bodyOutput, type: "application/json" };
-                return new InteractionOutput(cOutput, undefined, this.actions[actionName].output);
-            } else {
-                throw new Error(`ExposedThing '${this.title}' has no handler for Action '${actionName}'`);
-            }
-        } else {
-            throw new Error(`ExposedThing '${this.title}', no action found for '${actionName}'`);
-        }
-    }
+                if result:
+                    bodyOutput = ExposedThing.interactionInputToReadable(result)
 
-    public observeProperty(name: string, listener: WoT.WotListener, options?: WoT.InteractionOptions): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            if (this.properties[name]) {
-                const ps: PropertyState = this.properties[name].getState();
-                // let next = listener;
-                // let error = null;
-                // let complete = null;
-                // let sub: Subject<Content> = this.properties[name].getState().subject;
-                // sub.asObservable().subscribe(next, error, complete);
-                ps.listeners.push(listener);
-                console.debug("[core/exposed-thing]", `ExposedThing '${this.title}' subscribes to property '${name}'`);
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no property found for '${name}'`));
-            }
-        });
-    }
+                cOutput: Content = { body: bodyOutput, type: "application/json" }
+                return InteractionOutput(cOutput, undefined, self.actions[actionName].output)
+            else:
+                raise Exception(f'ExposedThing {self.title} has no handler for Action {actionName}')
+        else:
+            raise Exception(f'ExposedThing {self.title}, no action found for {actionName}')
 
-    public unobserveProperty(name: string): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            if (this.properties[name]) {
-                // let sub: Subject<Content> = this.properties[name].getState().subject;
-                // sub.unsubscribe();  // XXX causes loop issue (see browser counter example)
-                console.debug(
-                    "[core/exposed-thing]",
-                    `ExposedThing '${this.title}' unsubscribes from property '${name}'`
-                );
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no property found for '${name}'`));
-            }
-        });
-    }
+    def observeProperty(self, name: str, listener: WoT.WotListener, options: Optional[WoT.InteractionOptions]) -> None:
+        if self.properties[name]:
+            ps: PropertyState = self.properties[name].getState()
+            # let next = listener;
+            # let error = null;
+            # let complete = null;
+            # let sub: Subject<Content> = this.properties[name].getState().subject;
+            # sub.asObservable().subscribe(next, error, complete);
+            ps.listeners.append(listener)
+            logger.debug(f'ExposedThing {self.title} subscribes to property {name}')
+        else:
+            raise Exception(f'ExposedThing {self.title}, no property found for {name}')
 
-    public subscribeEvent(name: string, listener: WoT.WotListener, options?: WoT.InteractionOptions): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            if (this.events[name]) {
-                const es: EventState = this.events[name].getState();
-                // let next = listener;
-                // let error = null;
-                // let complete = null;
-                // let sub: Subject<any> = this.events[name].getState().subject;
-                // sub.asObservable().subscribe(next, error, complete);
-                es.listeners.push(listener);
-                // es.subject.asObservable().subscribe(listener, null, null);
-                console.debug("[core/exposed-thing]", `ExposedThing '${this.title}' subscribes to event '${name}'`);
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no event found for '${name}'`));
-            }
-        });
-    }
+    async def unobserveProperty(self, name: str) -> None:
+        if self.properties[name]:
+            # let sub: Subject<Content> = this.properties[name].getState().subject;
+            # sub.unsubscribe();  // XXX causes loop issue (see browser counter example)
+            logger.debug(
+                f'ExposedThing {self.title} unsubscribes from property {name}'
+            )
+        else:
+            raise Exception(f'ExposedThing {self.title}, no property found for {name}')
 
-    public unsubscribeEvent(name: string): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            if (this.events[name]) {
-                // let sub: Subject<any> = this.events[name].getState().subject;
-                // sub.unsubscribe(); // XXX causes loop issue (see browser counter example)
-                console.debug("[core/exposed-thing]", `ExposedThing '${this.title}' unsubscribes from event '${name}'`);
-            } else {
-                reject(new Error(`ExposedThing '${this.title}', no event found for '${name}'`));
-            }
-        });
-    }
+    async def subscribeEvent(self, name: str, listener: WoT.WotListener, options: Optional[WoT.InteractionOptions]) -> None:
+        if self.events[name]:
+            es: EventState = self.events[name].getState()
+            # let next = listener;
+            # let error = null;
+            # let complete = null;
+            # let sub: Subject<any> = this.events[name].getState().subject;
+            # sub.asObservable().subscribe(next, error, complete);
+            es.listeners.push(listener)
+            # es.subject.asObservable().subscribe(listener, null, null);
+            logger.debug(f'ExposedThing {self.title} subscribes to event {name}')
+        else:
+            raise Exception(f'ExposedThing {self.title}, no event found for {name}')
 
-    private static interactionInputToReadable(input: WoT.InteractionInput): Readable {
-        let body;
-        if (typeof ReadableStream !== "undefined" && input instanceof ReadableStream) {
-            body = ProtocolHelpers.toNodeStream(input);
-        } else if (input instanceof PolyfillStream) {
-            body = ProtocolHelpers.toNodeStream(input);
-        } else {
-            body = Readable.from(Buffer.from(input.toString(), "utf-8"));
-        }
-        return body;
-    }
-}
+    async def unsubscribeEvent(self, name: str) -> None:
+        if self.events[name]:
+            # let sub: Subject<any> = this.events[name].getState().subject;
+            # sub.unsubscribe(); // XXX causes loop issue (see browser counter example)
+            logger.debug(f'ExposedThing {self.title} unsubscribes from event {name}')
+        else:
+            raise Exception(f'ExposedThing {self.title}, no event found for {name}')
+
+    def interactionInputToReadable(self, input: WoT.InteractionInput) -> Readable:
+        if ReadableStream and isinstance(input, ReadableStream):
+            body = ProtocolHelpers.toNodeStream(input)
+        elif isinstance(input, PolyfillStream):
+            body = ProtocolHelpers.toNodeStream(input)
+        else:
+            body = Readable.from(Buffer.from(input.toString(), "utf-8"))
+        
+        return body
+
+
 class PropertyState {
     public value: WoT.DataSchemaValue;
     // public subject: Subject<Content>;
