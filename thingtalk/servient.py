@@ -4,11 +4,11 @@ import asyncio
 import json
 
 from uuid import uuid4
-from typing import TYPE_CHECKING, Any
-import * as WoT from "wot-typescript-definitions"
+from typing import TYPE_CHECKING, Any, Optional
+import protocol as WoT
 from loguru import logger 
 
-import WoTImpl from "./wot-impl";
+from wot_impl import WoTImpl
 import Helpers from "./helpers";
 
 if TYPE_CHECKING:
@@ -25,13 +25,13 @@ class Servient:
     things: dict[str, ExposedThing] = {}
     credentialStore: dict[str, list[Any]] = {}
 
-    __uncaughtListeners: list<(...args:any)=>void> = []
+    # __uncaughtListeners: list<(...args:any)=>void> = []
 
     # add a new codec to support a mediatype; offered mediatypes are listed in TDs
     def addMediaType(self, codec: ContentCodec, offered: bool = False) -> None:
         ContentManager.addCodec(codec, offered)
 
-    def expose(self, thing: ExposedThing):
+    async def expose(self, thing: ExposedThing) -> None:
 
         if len(self.servers) == 0:
             logger.warning('Servient has no servers to expose Things')
@@ -123,13 +123,13 @@ class Servient:
         else:
             # FIXME returning null was bad - Error or Promise?
             # h0ru5: caller cannot react gracefully - I'd throw Error
-            raise Error(f'Servient has no ClientFactory for scheme {scheme}')
+            raise Exception(f'Servient has no ClientFactory for scheme {scheme}')
 
     def getClientSchemes(self) -> list[str]:
         return list(self.clientFactories.keys())
 
     def addCredentials(self, credentials: Any):
-        if (typeof credentials === "object"):
+        if True: # Fixme (typeof credentials === "object"):
             for i in credentials:
                 logger.debug(f'Servient storing credentials for {i}')
                 currentCredentials: list[Any] = self.credentialStore.get(i)
@@ -150,45 +150,39 @@ class Servient:
             # return first
             return currentCredentials[0]
         else:
-            return undefined
+            return None
 
     def retrieveCredentials(self, identifier: str) -> list[Any]:
         logger.debug(f'Servient looking up credentials for {identifier}')
         return self.credentialStore.get(identifier)
 
     # will return WoT object
-    def start(self):
+    async def start(self) -> WoTImpl:
         serverStatus = []
         for server in self.servers:
-            serverStatus.append(server.start(self))
+            serverStatus.append(asyncio.create_task(server.start(self)))
         
         for clientFactory in self.clientFactories.values():
             clientFactory.init()
 
-        return new Promise<WoT.WoT>((resolve, reject) => {
-            Promise.all(serverStatus)
-                .then(() => {
-                    resolve(new WoTImpl(this));
-                })
-                .catch(err => {
-                    reject(err);
-                });
-        })
+        await asyncio.gather(**serverStatus)
+        
+        return WoTImpl(self)
 
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         for clientFactory in self.clientFactories.values():
             clientFactory.destroy()
         
-        for server in self.servers:
-            server.stop()
+        tasks = [asyncio.create_task(server.stop()) for server in self.servers]
+        
+        await asyncio.gather(**tasks)
+        
+        # for listener in self.__uncaughtListeners:
+        #     process.removeListener("uncaughtException",listener)
 
-        for listener in self.__uncaughtListeners
-            process.removeListener("uncaughtException",listener)
 
-
-export interface ScriptOptions {
-    argv?:Array<string>;
-    compiler?: CompilerFunction;
-    env?:Object;
-}
+# class ScriptOptions:
+#     argv: Optional[list[str]]
+#     compiler: Optional[CompilerFunction]
+#     env: Object

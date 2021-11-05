@@ -1,10 +1,12 @@
 from __future__ import annotations
+
+from enum import Enum
 from typing import TYPE_CHECKING, NoReturn, Optional
 
 from loguru import logger
 
 import * as WoT from "wot-typescript-definitions";
-import * as TD from "@node-wot/td-tools";
+
 if TYPE_CHECKING:
     from .servient import Servient
 from .exposed_thing import ExposedThing
@@ -60,16 +62,16 @@ class WoTImpl:
             raise Exception("Cannot produce ExposedThing because " + e.message)
 
 
-export enum DiscoveryMethod {
-    /** does not provide any restriction */
-    "any",
-    /** for discovering Things defined in the same device */
-    "local",
-    /** for discovery based on a service provided by a directory or repository of Things  */
-    "directory",
-    /** for discovering Things in the device's network by using a supported multicast protocol  */
-    "multicast",
-}
+class DiscoveryMethod(str, Enum):
+    # does not provide any restriction
+    ANY = "any"
+    # for discovering Things defined in the same device
+    LOCAL = "local"
+    # for discovery based on a service provided by a directory or repository of Things
+    DIRECTORY = "directory"
+    # for discovering Things in the device's network by using a supported multicast protocol
+    MULTICAST = "multicast"
+
 
 class ThingDiscoveryImpl(WoT.ThingDiscovery):
     filter: Optional[WoT.ThingFilter]
@@ -95,12 +97,11 @@ class ThingDiscoveryImpl(WoT.ThingDiscovery):
         self.done = False
 
 # Instantiation of the WoT.DataType declaration
-export enum DataType {
-    boolean = "boolean",
-    number = "number",
-    integer = "integer",
-    string = "string",
-    object = "object",
-    array = "array",
-    null = "null",
-}
+class DataType(str, Enum):
+    BOOLEAN = "boolean"
+    NUMBER = "number"
+    INTEGER = "integer"
+    STRING = "string"
+    OBJECT = "object"
+    ARRAY = "array"
+    NULL = "null"

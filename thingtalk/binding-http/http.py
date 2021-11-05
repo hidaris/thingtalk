@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypedDict
+from typing import Literal, Optional, TypedDict, Union
 
 import * as TD from "@node-wot/td-tools";
 import { Method } from "./oauth-token-validation";
@@ -32,15 +32,15 @@ class OAuth2ServerConfig(TD.SecurityScheme):
 
 class HttpProxyConfig:
     href: str
-    scheme: "basic" | "bearer"
+    scheme: Literal["basic", "bearer"]
     token: str
     username: str
     password: str
 
 
 class HttpForm(TD.Form):
-    "htv:methodName"?: HTTPMethodName;
-    "htv:headers"?: list[HttpHeader] | HttpHeader;
+    "htv:methodName": Optional[HTTPMethodName]
+    "htv:headers": Optional[Union[list[HttpHeader], HttpHeader]]
 
 
 HTTPMethodName = "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "HEAD"

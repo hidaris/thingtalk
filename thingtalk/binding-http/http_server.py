@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class HttpServer:
-    scheme: Literal["http" | "https"]
+    scheme: Literal["http", "https"]
 
     PROPERTY_DIR: str = "properties"
     ACTION_DIR: str = "actions"
@@ -36,7 +36,7 @@ class HttpServer:
         if not isinstance(config, HttpConfig):
             raise TypeError(f'HttpServer requires config object (got {type(config)})')
 
-        if config.port is not undefined:
+        if config.port:
             self.port = config.port
 
         environmentObj = ["WOT_PORT", "PORT"]
@@ -45,16 +45,16 @@ class HttpServer:
             })
             .find((envObj) => envObj.value != null);
 
-        if (environmentObj):
+        if environmentObj:
             logger.info(
                 f'HttpServer Port Overridden to {environmentObj.value} by Environment Variable {environmentObj.key}'
             )
             self.port = +environmentObj.value;
 
-        if config.address !== undefined:
+        if config.address:
             self.address = config.address
 
-        if config.baseUri !== undefined:
+        if config.baseUri:
             self.baseUri = config.baseUri
 
         # TLS
@@ -76,31 +76,17 @@ class HttpServer:
         logger.info(
             f'HttpServer starting on {self.address}port {self.port}'
         )
-        return new Promise<void>((resolve, reject) => {
-            # store servient to get credentials
-            self.servient = servient;
+        # store servient to get credentials
+        self.servient = servient
 
-            # long timeout for long polling
-            this.server.setTimeout(60 * 60 * 1000, () => {
-                console.debug("[binding-http]", `HttpServer on port ${this.getPort()} timed out connection`);
-            });
-            // no keep-alive because NodeJS HTTP clients do not properly use same socket due to pooling
-            this.server.keepAliveTimeout = 0;
+        # long timeout for long polling
+        self.server.setTimeout(60 * 60 * 1000, () => {
+            console.debug("[binding-http]", `HttpServer on port ${this.getPort()} timed out connection`);
+        })
+        # no keep-alive because NodeJS HTTP clients do not properly use same socket due to pooling
+        self.server.keepAliveTimeout = 0
 
-            // start promise handles all errors until successful start
-            this.server.once("error", (err: Error) => {
-                reject(err);
-            });
-            this.server.once("listening", () => {
-                // once started, console "handles" errors
-                this.server.on("error", (err: Error) => {
-                    console.error("[binding-http]", `HttpServer on port ${this.port} failed: ${err.message}`);
-                });
-                resolve();
-            });
-            this.server.listen(this.port, this.address);
-        });
-    }
+        # start promise handles all errors until successful start
 
     def stop(self):
         logger.info(f'HttpServer stopping on port {self.getPort()}')
@@ -123,11 +109,11 @@ class HttpServer:
 
     # returns server port number and indicates that server is running when larger than -1
     def getPort(self) -> int:
-        if self.server.address() and typeof this.server.address() === "object") {
-            return (<AddressInfo>this.server.address()).port;
+        if self.server.address() and typeof self.server.address() === "object":
+            return (<AddressInfo>this.server.address()).port
         else:
             # includes address() typeof "string" case, which is only for unix sockets
-            return -1;
+            return -1
 
     def getHttpSecurityScheme(self) -> str:
         return self.httpSecurityScheme

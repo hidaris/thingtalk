@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-from logging import warning
 from typing import TYPE_CHECKING, Any, Optional
 
 from loguru import logger 
-import * as WoT from "wot-typescript-definitions";
+import protocol as WoT
+
+from thingtalk.td import BaseSchema, ThingAction, ThingEvent, ThingProperty
 
 import { Subject } from "rxjs/Subject";
 
@@ -21,7 +22,8 @@ import ProtocolHelpers from "./protocol-helpers";
 import { ReadableStream as PolyfillStream } from "web-streams-polyfill/ponyfill/es2018";
 import { Content } from "./core";
 
-class ExposedThing extends TD.Thing implements WoT.ExposedThing:
+
+class ExposedThing(WoT.ExposedThing):
     security: list[str]
     securityDefinitions: dict[str, TD.SecurityType]
 
@@ -44,7 +46,7 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
 
         self.servient = servient
         
-        self.subjectTD = Subject<WoT.ThingDescription>();
+        self.subjectTD = Subject<WoT.ThingDescription>()
 
         # Deep clone the Thing Model
         # without functions or methods
@@ -67,9 +69,9 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
             }
         } */
         # set default language
-        self.addDefaultLanguage(this);
+        self.addDefaultLanguage(self)
         # extend interactions
-        self.extendInteractions();
+        self.extendInteractions()
     }
 
     # Note: copy from td-parser.ts
@@ -108,29 +110,26 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
         if self.events[name]:
             es: EventState = self.events[name].getState();
             for listener in es.listeners:
-                listener.call(this, data);
+                listener.call(self, data)
         else:
             # NotFoundError
             raise Exception("NotFoundError for event '" + name + "'")
 
-    # @inheritDoc
-    def expose(self):
+    async def expose(self):
         logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
 
         # let servient forward exposure to the servers
-        self.servient.expose(self)
+        await self.servient.expose(self)
         # inform TD observers
         self.subjectTD.next(self.getThingDescription())
 
-    # @inheritDoc
-    def destroy(self):
+    async def destroy(self):
         logger.debug(f'ExposedThing {self.title} destroying the thing and its interactions')
 
-        self.servient.destroyThing(self.id)
+        await self.servient.destroyThing(self.id)
         # inform TD observers that thing is gone
         self.subjectTD.next(None)
 
-    # @inheritDoc
     def setPropertyReadHandler(self, propertyName: str, handler: WoT.PropertyReadHandler) -> WoT.ExposedThing:
         logger.debug(
             f'ExposedThing {self.title} setting read handler for {propertyName}'
@@ -227,11 +226,11 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
         else:
             raise Exception(f'ExposedThing {self.title}, no property found for {propertyName}')
 
-    async _readProperties(self, propertyNames: list[str], options: Optional[WoT.InteractionOptions]) -> WoT.PropertyReadMap:
+    async def _readProperties(self, propertyNames: list[str], options: Optional[WoT.InteractionOptions]) -> WoT.PropertyReadMap:
         # collect all single promises into array
         promises: Promise<InteractionOutput>[] = [];
-        for (const propertyName of propertyNames) {
-            promises.push(this.readProperty(propertyName, options));
+        for propertyName in propertyNames:
+            promises.append(self.readProperty(propertyName, options))
         # wait for all promises to succeed and create response
         output = new Map<string, WoT.InteractionOutput>();
             Promise.all(promises)
@@ -326,10 +325,10 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
     async def writeMultipleProperties(self, valueMap: WoT.PropertyWriteMap, options: Optional[WoT.InteractionOptions]) -> None:
         # collect all single promises into array
         promises: Promise<void>[] = [];
-        for (const propertyName in valueMap) {
+        for propertyName in valueMap:
                 promises.push(this.writeProperty(propertyName, valueMap.get(propertyName), options));
             }
-            // wait for all promises to succeed and create response
+            # wait for all promises to succeed and create response
             Promise.all(promises)
                 .then((result) => {
                     resolve();
@@ -431,121 +430,80 @@ class ExposedThing extends TD.Thing implements WoT.ExposedThing:
         return body
 
 
-class PropertyState {
-    public value: WoT.DataSchemaValue;
-    // public subject: Subject<Content>;
-    public scope: unknown;
+class PropertyState:
+    value: WoT.DataSchemaValue
+    # public subject: Subject<Content>;
+    scope: object
 
-    public readHandler: WoT.PropertyReadHandler;
-    public writeHandler: WoT.PropertyWriteHandler;
+    readHandler: WoT.PropertyReadHandler
+    writeHandler: WoT.PropertyWriteHandler
 
-    listeners: WoT.WotListener[];
+    listeners: list[WoT.WotListener]
 
-    constructor(value: WoT.DataSchemaValue = null) {
-        this.value = value;
-        this.listeners = [];
-        // this.subject = new Subject<Content>();
-        this.scope = {};
-        this.writeHandler = null;
-        this.readHandler = null;
-    }
-}
+    def __init__(self, value: Optional[WoT.DataSchemaValue] = None):
+        self.value = value
+        self.listeners = []
+        # this.subject = new Subject<Content>();
+        self.scope = {}
+        self.writeHandler = None
+        self.readHandler = None
 
-class ActionState {
-    public scope: unknown;
-    public handler: WoT.ActionHandler;
 
-    constructor() {
-        this.scope = {};
-        this.handler = null;
-    }
-}
+class ActionState:
+    scope: object
+    handler: WoT.ActionHandler
 
-class EventState {
-    // public subject: Subject<any>;
-    listeners: WoT.WotListener[];
+    def __init__(self):
+        self.scope = {}
+        self.handler = None
 
-    constructor() {
-        // this.subject = new Subject<any>();
-        this.listeners = [];
-    }
-}
-class ExposedThingProperty extends TD.ThingProperty implements TD.ThingProperty, TD.BaseSchema {
-    // functions for wrapping internal state
-    getName: () => string;
-    getThing: () => ExposedThing;
-    getState: () => PropertyState;
 
-    constructor(name: string, thing: ExposedThing) {
-        super();
+class EventState:
+    # public subject: Subject<any>;
+    listeners: list[WoT.WotListener]
 
-        // wrap internal state into functions to not be stringified in TD
-        this.getName = () => {
-            return name;
-        };
-        this.getThing = () => {
-            return thing;
-        };
-        this.getState = new (class {
-            state: PropertyState = new PropertyState();
-            getInternalState = () => {
-                return this.state;
-            };
-        })().getInternalState;
+    def __init__(self):
+        # this.subject = new Subject<any>();
+        self.listeners = []
 
-        // apply defaults
-        this.readOnly = false;
-        this.writeOnly = false;
-        this.observable = false;
-    }
-}
 
-class ExposedThingAction extends TD.ThingAction implements TD.ThingAction {
-    // functions for wrapping internal state
-    getName: () => string;
-    getThing: () => ExposedThing;
-    getState: () => ActionState;
+class ExposedThingProperty(ThingProperty, BaseSchema):
+    # functions for wrapping internal state
 
-    constructor(name: string, thing: ExposedThing) {
-        super();
+    def __init__(self, name: str, thing: ExposedThing):
+        super().__init__()
 
-        // wrap internal state into functions to not be stringified
-        this.getName = () => {
-            return name;
-        };
-        this.getThing = () => {
-            return thing;
-        };
-        this.getState = new (class {
-            state: ActionState = new ActionState();
-            getInternalState = () => {
-                return this.state;
-            };
-        })().getInternalState;
-    }
-}
+        # wrap internal state into functions to not be stringified in TD
+        self.name = name
+        self.thing = thing
+        
+        self.state = PropertyState()
 
-class ExposedThingEvent extends TD.ThingEvent implements TD.ThingEvent {
-    // functions for wrapping internal state
-    getName: () => string;
-    getThing: () => ExposedThing;
-    getState: () => EventState;
+        # apply defaults
+        self.readOnly = False
+        self.writeOnly = False
+        self.observable = False
 
-    constructor(name: string, thing: ExposedThing) {
-        super();
 
-        // wrap internal state into functions to not be stringified
-        this.getName = () => {
-            return name;
-        };
-        this.getThing = () => {
-            return thing;
-        };
-        this.getState = new (class {
-            state: EventState = new EventState();
-            getInternalState = () => {
-                return this.state;
-            };
-        })().getInternalState;
-    }
-}
+class ExposedThingAction(ThingAction):
+    # functions for wrapping internal state
+
+    def __init__(self, name: str, thing: ExposedThing):
+        super().__init__()
+
+        # wrap internal state into functions to not be stringified
+        self.name = name
+        self.thing = thing
+        self.state = ActionState()
+
+
+class ExposedThingEvent(ThingEvent):
+    # functions for wrapping internal state
+
+    def __init__(self, name: str, thing: ExposedThing):
+        super().__init__()
+
+        # wrap internal state into functions to not be stringified
+        self.name = name
+        self.thing = thing
+        self.state = EventState()

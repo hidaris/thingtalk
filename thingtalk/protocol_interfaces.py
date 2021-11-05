@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Optional, Protocol
 
 import thingtalk.td_tools.thing_description as TD
 
@@ -12,33 +12,33 @@ if TYPE_CHECKING:
 
 class Content:
     type: str
-    body: NodeJS.ReadableStream;
+    body: NodeJS.ReadableStream
 
 
 class ProtocolClient(Protocol):
     # this client is requested to perform a "read" on the resource with the given URI
-    def readResource(form: TD.Form) -> Promise<Content>:
+    async def readResource(form: TD.Form) -> Content:
         pass
 
     # this cliet is requested to perform a "write" on the resource with the given URI
-    def writeResource(form: TD.Form, content: Content) -> Promise<void>:
+    async def writeResource(form: TD.Form, content: Content) -> None:
         pass
 
     # this client is requested to perform an "invoke" on the resource with the given URI
-    def invokeResource(form: TD.Form, content: Content) -> Promise<Content>:
+    async def invokeResource(form: TD.Form, content: Content) -> Content:
         pass
 
     # this client is requested to perform an "unlink" on the resource with the given URI
-    def unlinkResource(form: TD.Form) -> Promise<void>:
+    async def unlinkResource(form: TD.Form) -> None:
         pass
 
-    def subscribeResource(
+    async def subscribeResource(
         form: TD.Form,
         next: (content: Content) => void,
         error?: (error: any) => void,
         complete?: () => void
-    ) -> Promise<Subscription>:
-    pass
+    ) -> Subscription:
+        pass
 
     # start the client (ensure it is ready to send requests)
     def start() -> bool:
@@ -48,7 +48,7 @@ class ProtocolClient(Protocol):
         pass
 
     # apply TD security metadata
-    def setSecurity(metadata: list[TD.SecurityScheme], credentials?: Any) -> bool:
+    def setSecurity(metadata: list[TD.SecurityScheme], credentials: Optional[Any]) -> bool:
         pass
 
 
@@ -68,7 +68,7 @@ class ProtocolClientFactory(Protocol):
 class ProtocolServer(Protocol):
     scheme: str
     
-    def expose(thing: ExposedThing, tdTemplate?: WoT.ThingDescription) -> Promise<void>:
+    async def expose(thing: ExposedThing, tdTemplate: Optional[WoT.ThingDescription]) -> None:
         pass
     '''**
      * @param thingId: id of the thing to destroy
