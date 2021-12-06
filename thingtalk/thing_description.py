@@ -12,8 +12,7 @@ DEFAULT_THING_TYPE = "Thing"
  ~ In Thing index structure could be read-only (sanitizing needs write access)
 """
 
-MultiLanguage = Any
-# object?
+MultiLanguage = dict[str, str]
 
 # Implements the Thing Description as software object
 class Thing:
@@ -23,8 +22,8 @@ class Thing:
     description: str
     descriptions: MultiLanguage
     support: str
-    modified: str
     created: str
+    modified: str
     version: VersionInfo
     securityDefinitions: dict[str, SecurityType]
 
@@ -84,9 +83,9 @@ class ExpectedResponse(TypedDict):
 
 # Implements the Interaction Form description
 class Form:
+    op: str | list[str]
     href: str
     subprotocol: str
-    op: str | list[str]
     contentType: str  # media type + parameter(s), e.g., text/plain;charset=utf8
     security: list[
         str

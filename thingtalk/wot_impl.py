@@ -23,7 +23,7 @@ class WoTImpl:
     def discover(self, filter: Optional[WoT.ThingFilter]) -> WoT.ThingDiscovery:
         return ThingDiscoveryImpl(filter)
 
-    def consume(self, td: WoT.ThingDescription) -> ConsumedThing:
+    async def consume(self, td: WoT.ThingDescription) -> ConsumedThing:
         try:
             thing = TD.parseTD(JSON.stringify(td), True)
             newThing: ConsumedThing = ConsumedThing(self.srv, thing)
@@ -43,7 +43,7 @@ class WoTImpl:
      *
      * @param title title/identifier of the thing to be created
      *'''
-    def produce(self, init: WoT.ExposedThingInit) -> WoT.ExposedThing:
+    async def produce(self, init: WoT.ExposedThingInit) -> WoT.ExposedThing:
         try:
             validated = Helpers.validateExposedThingInit(init);
 
