@@ -8,7 +8,7 @@ from loguru import logger
 # from config import settings
 from ..toolkits.mqtt import Mqtt, Client
 from ..toolkits.event_bus import mb
-from ..models.thing import Thing
+from ..models.thing import ExposedThing
 from ..models.property import Property
 from ..models.action import Action
 from ..models.event import Event
@@ -22,7 +22,7 @@ class MqttAction(Action):
         )
 
 
-class MqttThing(Thing):
+class MqttThing(ExposedThing):
     async def property_action(self, property_):
         mb.emit(
             f"things/{self.id}/set",
@@ -61,7 +61,7 @@ class ThingMqtt(Mqtt):
             if len(topic_words) == 3 and topic_words[2] == "td":
                 payload = json.loads(payload)
                 thing = MqttThing(
-                    id_=payload.get("id"),
+                    id=payload.get("id"),
                     title=payload.get("title"),
                     type_=payload.get("@type"),
                     description_=payload.get("description"),

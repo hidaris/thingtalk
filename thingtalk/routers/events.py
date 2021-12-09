@@ -2,13 +2,13 @@ from fastapi import Depends, APIRouter
 from fastapi.responses import UJSONResponse
 
 from ..dependencies import get_thing
-from ..models.thing import Thing
+from ..models.thing import ExposedThing
 
 router = APIRouter()
 
 
 @router.get("/events")
-async def get_events(thing: Thing = Depends(get_thing)) -> UJSONResponse:
+async def get_events(thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /events.
     :param thing -- the thing this request is for
@@ -18,7 +18,7 @@ async def get_events(thing: Thing = Depends(get_thing)) -> UJSONResponse:
 
 
 @router.get("/events/{event_name}")
-async def get_event(event_name: str, thing: Thing = Depends(get_thing)) -> UJSONResponse:
+async def get_event(event_name: str, thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /events/<event_name>.
     :param thing -- the thing this request is for

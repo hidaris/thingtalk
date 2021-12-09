@@ -6,7 +6,7 @@ from fastapi.requests import Request
 from fastapi.responses import UJSONResponse
 
 from ..dependencies import get_thing
-from ..models.thing import Thing
+from ..models.thing import ExposedThing
 from ..utils import get_http_href, get_ws_href
 
 router = APIRouter()
@@ -70,7 +70,7 @@ async def get_things(request: Request) -> UJSONResponse:
 
 @router.get("/things/{thing_id}")
 async def get_thing_by_id(
-    request: Request, thing: Thing = Depends(get_thing)
+    request: Request, thing: ExposedThing = Depends(get_thing)
 ) -> UJSONResponse:
     """
     Handle a GET request, including websocket requests.

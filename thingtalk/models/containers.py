@@ -1,14 +1,14 @@
 from loguru import logger
 
 from .event import ThingPairedEvent, ThingRemovedEvent
-from .thing import Thing
+from .thing import ExposedThing
 from ..toolkits.event_bus import mb
 
 
 class SingleThing:
     """A container for a single thing."""
 
-    def __init__(self, thing: Thing):
+    def __init__(self, thing: ExposedThing):
         """
         Initialize the container.
         thing -- the thing to store
@@ -64,11 +64,11 @@ class MultipleThings:
         """Get the mDNS server name."""
         return self.name
 
-    async def discover(self, thing: Thing):
+    async def discover(self, thing: ExposedThing):
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
 
-    async def add_thing(self, thing: Thing):
+    async def add_thing(self, thing: ExposedThing):
         logger.debug("add_thing")
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()

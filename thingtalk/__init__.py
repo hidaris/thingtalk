@@ -6,6 +6,6 @@ from .models.event import Event
 from .models.property import Property
 # from .app import app
 from .models.containers import SingleThing, MultipleThings
-from .models.thing import Thing
+from .models.thing import ExposedThing
 from .domains.iot import Device
 from .models.value import Value

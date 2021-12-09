@@ -1,6 +1,6 @@
 from starlette.middleware import Middleware
 
-from thingtalk import background_thread_loop, Value, Thing, Property, Event, Action, ThingTalk
+from thingtalk import background_thread_loop, Value, ExposedThing, Property, Event, Action, ThingTalk
 from starlette.middleware.cors import CORSMiddleware
 
 # import logging
@@ -22,7 +22,7 @@ class Request(Action):
         await self._thing.add_event(OverheatedEvent(self._thing, 102))
 
 
-class HTTPRequester(Thing):
+class HTTPRequester(ExposedThing):
     type = ["HTTPRequester"],
     description = "A web connected lamp",
 

@@ -1,10 +1,10 @@
 from loguru import logger
 
-from ..models.thing import Thing
+from ..models.thing import ExposedThing
 from ..toolkits.event_bus import mb
 
 
-class Device(Thing):
+class Device(ExposedThing):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

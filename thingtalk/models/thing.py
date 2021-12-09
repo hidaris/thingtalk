@@ -1,12 +1,16 @@
 """High-level Thing base class implementation."""
 
+from __future__ import annotations
+
 import asyncio
-from typing import Dict
+from typing import Optional
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from loguru import logger
+
+from thingtalk.servient import Servient
 
 from .event import (
     Event,
@@ -29,13 +33,13 @@ async def perform_action(action):
     await action.start()
 
 
-class Thing:
+class ExposedThing:
     """A Web Thing."""
 
     type = []
     description = ""
 
-    def __init__(self, id_, title, type_=[], description_=""):
+    def __init__(self, srv: Servient,  type_=[], init: Optional[str] = None):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -53,12 +57,13 @@ class Thing:
         self._type = self._type.union(set(self.type))
 
         if not self.description:
-            self.description = description_
+            self.description = None
 
-        self._id = id_
-        self._context = "https://webthings.io/schemas"
-        self._title = title
-        self.properties: Dict[str, Property] = {}
+        self.servient = srv
+        self._id: Optional[str] = None
+        self._context: str = "https://webthings.io/schemas"
+        self._title: Optional[str] = None
+        self.properties: dict[str, Property] = {}
         self.available_actions = {}
         self.available_events = {}
         self.actions = {}
@@ -68,6 +73,21 @@ class Thing:
         self._ui_href = ""
         self.subscribe_topics = [f"things/{self._id}"]
         mb.on(f"things/{self._id}", self.dispatch)
+
+    async def expose(self):
+        logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
+
+        # let servient forward exposure to the servers
+        await self.servient.expose(self)
+        # inform TD observers
+        # self.subjectTD.next(self.getThingDescription())
+
+    async def destroy(self):
+        logger.debug(f'ExposedThing {self.title} destroying the thing and its interactions')
+
+        await self.servient.destroyThing(self.id)
+        # inform TD observers that thing is gone
+        # self.subjectTD.next(None)
 
     async def subscribe_broadcast(self):
         pass
@@ -213,15 +233,23 @@ class Thing:
         self._ui_href = href
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Get the ID of the thing.
         Returns the ID as a string.
         """
         return self._id
 
+    @id.setter
+    def id(self, _id: str) -> str:
+        """
+        Set the ID of the thing.
+        id -- the ID
+        """
+        self._id = _id
+
     @property
-    def title(self):
+    def title(self) -> str:
         """
         Get the title of the thing.
         Returns the title as a string.
@@ -229,7 +257,7 @@ class Thing:
         return self._title
 
     @title.setter
-    def title(self, title) -> None:
+    def title(self, title: str) -> None:
         """
         Set the new title of this thing.
         title -- the new title
@@ -237,7 +265,7 @@ class Thing:
         self._title = title
 
     @property
-    def context(self):
+    def context(self) -> str:
         """
         Get the type context of the thing.
         Returns the context as a string.
@@ -616,7 +644,7 @@ class Thing:
         return self.owners
 
 
-class Server(Thing):
+class Server(ExposedThing):
     type = ["Server"]
     description = "Web Thing Environment"
 

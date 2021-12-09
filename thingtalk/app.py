@@ -16,7 +16,7 @@ from zeroconf.asyncio import AsyncZeroconf, ServiceInfo
 
 from .routers.mqtt import ThingMqtt
 from .utils import get_ip
-from .models.thing import Server, Thing
+from .models.thing import Server, ExposedThing
 from .models.containers import MultipleThings, SingleThing
 from .toolkits import mb
 
@@ -58,7 +58,7 @@ class ThingTalk(FastAPI):
             include_in_schema: bool = True,
             mode: str = "single",
             mqtt: Optional[ThingMqtt] = None,
-            thing: Optional[Thing] = None,
+            thing: Optional[ExposedThing] = None,
             **extra: Any) -> None:
         super().__init__(debug=debug, routes=routes, title=title, description=description, version=version,
                          openapi_url=openapi_url, openapi_tags=openapi_tags, servers=servers, dependencies=dependencies,

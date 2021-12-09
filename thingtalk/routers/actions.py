@@ -6,7 +6,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import UJSONResponse, Response
 
 from ..dependencies import get_thing
-from ..models.thing import Thing
+from ..models.thing import ExposedThing
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ async def perform_action(action):
 
 
 @router.get("/actions")
-async def get_actions(thing: Thing = Depends(get_thing)) -> UJSONResponse:
+async def get_actions(thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions.
     :param thing-- the thing this request is for
@@ -29,7 +29,7 @@ async def get_actions(thing: Thing = Depends(get_thing)) -> UJSONResponse:
 @router.post("/actions")
 async def revoke_actions(
         message: typing.Dict[str, typing.Any],
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a POST request.
     :param thing -- the thing this request is for
@@ -54,7 +54,7 @@ async def revoke_actions(
 @router.get("/actions/{action_name}")
 async def get_action(
         action_name: str,
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions/<action_name>.
     :param thing -- the thing this request is for
@@ -70,7 +70,7 @@ async def get_action(
 async def invoke_action(
         action_name: str,
         message: typing.Dict[str, typing.Any],
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a POST request.
     :param thing -- the thing this request is for
@@ -101,7 +101,7 @@ async def invoke_action(
 async def get_action_by_id(
         action_name: str,
         action_id: str,
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a request to /actions/<action_name>/<action_id>.
     :param thing -- the thing this request is for
@@ -120,7 +120,7 @@ async def get_action_by_id(
 async def update_action_by_id(
         action_name: str,
         action_id: str,
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
     """
     Handle a PUT request.
     TODO: this is not yet defined in the spec
@@ -136,7 +136,7 @@ async def update_action_by_id(
 async def cancel_action_by_id(
         action_name: str,
         action_id: str,
-        thing: Thing = Depends(get_thing)) -> Response:
+        thing: ExposedThing = Depends(get_thing)) -> Response:
     """
     Handle a DELETE request.
     :param thing -- the thing this request is for

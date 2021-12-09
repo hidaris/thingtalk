@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter
 
-from ..thingtalk import Thing, Property, Event, Action
+from ..thingtalk import ExposedThing, Property, Event, Action
 from ..thingtalk.app import ThingTalk
 from ..thingtalk.routers import things, websockets, properties, events, actions
 
@@ -46,7 +46,7 @@ class Fade(Action):
         await self.thing.add_event(OverheatedEvent(data=102))
 
 
-class Light(Thing):
+class Light(ExposedThing):
     type = ["OnOffSwitch", "Light"]
     description = "A web connected lamp"
 
