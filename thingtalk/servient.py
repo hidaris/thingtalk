@@ -73,7 +73,7 @@ class Servient:
             logger.warning(f'Servient was asked to destroy thing but failed to find thing with id {thingId}');
 
 
-    def getThing(self, id: str) -> ExposedThing:
+    def getThing(self, id: str) -> Optional[ExposedThing]:
         return self.things.get(id)
 
     # FIXME should be getThingDescriptions (breaking change)
