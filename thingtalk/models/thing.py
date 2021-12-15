@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from loguru import logger
 
-from thingtalk.servient import Servient
+if TYPE_CHECKING:
+    from thingtalk.servient import Servient
 
 from .event import (
     Event,
@@ -124,7 +125,7 @@ class ExposedThing:
         else:
             await self.error_notify(f"Unknown messageType: {msg_type}", message)
 
-    def as_thing_description(self):
+    def get_description(self):
         """
         Return the thing state as a Thing Description.
         Returns the state as a dictionary.

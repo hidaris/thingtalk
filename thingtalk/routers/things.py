@@ -7,7 +7,7 @@ from fastapi.responses import UJSONResponse
 
 from ..dependencies import get_thing
 from ..models.thing import ExposedThing
-from ..utils import get_http_href, get_ws_href
+from ..utils import get_http_host, get_ws_host
 
 router = APIRouter()
 
@@ -30,10 +30,10 @@ async def get_things(request: Request) -> UJSONResponse:
             description["links"].append(
                 {
                     "rel": "alternate",
-                    "href": f"{get_ws_href(request)}{thing.href}",
+                    "href": f"{get_ws_host(request)}{thing.href}",
                 }
             )
-            description["base"] = f"{get_http_href(request)}{thing.href}"
+            description["base"] = f"{get_http_host(request)}{thing.href}"
 
             description["securityDefinitions"] = {
                 "nosec_sc": {
@@ -53,10 +53,10 @@ async def get_things(request: Request) -> UJSONResponse:
         description["links"].append(
             {
                 "rel": "alternate",
-                "href": f"{get_ws_href(request)}{thing.href}",
+                "href": f"{get_ws_host(request)}{thing.href}",
             }
         )
-        description["base"] = f"{get_http_href(request)}{thing.href}"
+        description["base"] = f"{get_http_host(request)}{thing.href}"
 
         description["securityDefinitions"] = {
             "nosec_sc": {
@@ -78,15 +78,15 @@ async def get_thing_by_id(
     :param thing -- the thing this request is for
     :return UJSONResponse
     """
-    description = thing.as_thing_description()
+    description = thing.get_description()
     description["href"] = thing.href
     description["links"].append(
         {
             "rel": "alternate",
-            "href": f"{get_ws_href(request)}{thing.href}",
+            "href": f"{get_ws_host(request)}{thing.href}",
         }
     )
-    description["base"] = f"{get_http_href(request)}{thing.href}"
+    description["base"] = f"{get_http_host(request)}{thing.href}"
     description["securityDefinitions"] = {
         "nosec_sc": {
             "scheme": "nosec",

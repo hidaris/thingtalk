@@ -1,23 +1,29 @@
 """Utility functions."""
 
+from __future__ import annotations
+
 import datetime
 import ifaddr
 import socket
 import asyncio
 
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 from loguru import logger
 from threading import Thread
 
+if TYPE_CHECKING:
+    from fastapi.requests import Request
 
-def get_ws_href(request):
+
+def get_ws_host(request: Request):
     scheme = 'wss' if request.url.scheme == 'https' else 'ws'
     host = request.headers.get('Host', '')
     href = f"{scheme}://{host}"
     return href
 
 
-def get_http_href(request):
+def get_http_host(request: Request):
     scheme = request.url.scheme
     host = request.headers.get('Host', '')
     href = f"{scheme}://{host}"

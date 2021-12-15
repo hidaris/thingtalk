@@ -2,24 +2,67 @@ from __future__ import annotations
 
 import asyncio
 import json
+import socket
+import uvicorn
 
 from uuid import uuid4
-from typing import TYPE_CHECKING, Any, Optional
-from loguru import logger 
+from typing import TYPE_CHECKING, Any, Optional, Union
 
-from wot_impl import WoTImpl
-import Helpers from "./helpers";
+from loguru import logger
+from zeroconf.asyncio import AsyncZeroconf, ServiceInfo
+
+from thingtalk.bindings.http_server import HttpServer 
+
+from .wot_impl import WoTImpl
+
+from .models.thing import ExposedThing 
+from .utils import get_ip
 
 if TYPE_CHECKING:
-    from .models.thing import ExposedThing 
-    from .content_serdes import ContentCodec
     from protocol_interfaces import ProtocolClientFactory, ProtocolServer, ProtocolClient
 
 
 class Servient:
-    servers: list[ProtocolServer] = []
+    servers: list[ProtocolServer] = [HttpServer()]
     clientFactories: dict[str, ProtocolClientFactory] = {}
     things: dict[str, ExposedThing] = {}
+
+    def __init__(self):
+        server = self.servers[0]
+        assert isinstance(server, HttpServer)
+        self.app = server.app
+        # ZeroConf ServiceInfo
+        self.service_info: Optional[ServiceInfo] = None
+        self.post_init()
+
+    def post_init(self):
+        zeroconf = AsyncZeroconf()
+
+        @self.app.on_event("startup")
+        async def start_mdns():
+            """Start listening for incoming connections."""
+            # name = self.things.get_name()
+            args = [
+                "_webthing._tcp.local.",
+                "_webthing._tcp.local.",
+                # f"{name}._webthing._tcp.local.",
+            ]
+            kwargs = {
+                "port": 8000,
+                "properties": {
+                    "path": "/",
+                },
+                "server": f"{socket.gethostname()}.local.",
+                "addresses": [socket.inet_aton(get_ip())],
+            }
+            self.service_info = ServiceInfo(*args, **kwargs)
+            await zeroconf.async_register_service(self.service_info)
+
+        @self.app.on_event("shutdown")
+        async def stop_mdns():
+            """Stop listening."""
+            await zeroconf.async_unregister_service(self.service_info)
+            await zeroconf.async_close()
 
     async def expose(self, thing: ExposedThing) -> None:
 
@@ -46,6 +89,50 @@ class Servient:
             serverTasks.append(asyncio.create_task(server.expose(thing, tdTemplate)))
         
         asyncio.gather(*serverTasks)
+
+    # def discover(self, filter: Optional[WoT.ThingFilter]) -> WoT.ThingDiscovery:
+    #     return ThingDiscoveryImpl(filter)
+
+    # async def consume(self, td: WoT.ThingDescription) -> ConsumedThing:
+    #     try:
+    #         thing = TD.parseTD(JSON.stringify(td), True)
+    #         newThing: ConsumedThing = ConsumedThing(self.srv, thing)
+
+    #         logger.debug(
+    #             f'WoTImpl consuming TD {
+    #                 newThing.id ? "'" + newThing.id + "'" : "without id"
+    #             } to instantiate ConsumedThing {newThing.title}'
+    #         )
+    #         return newThing
+    #     except Exception as e:
+    #         raise Exception("Cannot consume TD because " + e.message)
+
+
+    '''
+     * create a new Thing
+     *
+     * @param title title/identifier of the thing to be created
+     *'''
+    def produce(self, init: Union[dict, ExposedThing]) -> ExposedThing:
+        try:
+            # validated = Helpers.validateExposedThingInit(init);
+
+            # if not validated.valid:
+            #     raise Exception("Thing Description JSON schema validation failed:\n" + validated.errors)
+            if isinstance(init, ExposedThing):
+                if self.addThing(init):
+                    return init
+                else:
+                    raise Exception("Thing already exists: " + init.title)
+            newThing = ExposedThing(self, init=init)
+            logger.debug(f'WoTImpl producing new ExposedThing {newThing.title}')
+
+            if self.addThing(newThing):
+                return newThing
+            else:
+                raise Exception("Thing already exists: " + newThing.title)
+        except Exception as e:
+            raise Exception("Cannot produce ExposedThing because " + str(e))
     
     def addThing(self, thing: ExposedThing) -> bool:
 
@@ -72,25 +159,15 @@ class Servient:
         else:
             logger.warning(f'Servient was asked to destroy thing but failed to find thing with id {thingId}');
 
-
     def getThing(self, id: str) -> Optional[ExposedThing]:
         return self.things.get(id)
 
-    # FIXME should be getThingDescriptions (breaking change)
-    def getThings(self) -> object:
+    def get_things_descriptions(self) -> object:
         logger.debug(f'Servient getThings size == {len(self.things)}')
         ts: dict[str, object] = {}
         for id, thing in self.things.items():
-            ts[id] = thing.getThingDescription()
+            ts[id] = thing.get_description()
         return ts
-
-    def addServer(self, server: ProtocolServer) -> bool:
-        # add all exposed Things to new server
-        for _, thing in self.things.items():
-            server.expose(thing)
-
-        self.servers.append(server)
-        return True
 
     def getServers(self) -> list[ProtocolServer]:
         # return a copy -- FIXME: not a deep copy
@@ -116,18 +193,8 @@ class Servient:
         return list(self.clientFactories.keys())
 
     # will return WoT object
-    async def start(self) -> WoTImpl:
-        serverStatus = []
-        for server in self.servers:
-            serverStatus.append(asyncio.create_task(server.start(self)))
-        
-        for clientFactory in self.clientFactories.values():
-            clientFactory.init()
-
-        await asyncio.gather(**serverStatus)
-        
-        return WoTImpl(self)
-
+    def start(self) -> None:
+        uvicorn.run(self.app, host='localhost', port=8080)
 
     async def shutdown(self) -> None:
         for clientFactory in self.clientFactories.values():

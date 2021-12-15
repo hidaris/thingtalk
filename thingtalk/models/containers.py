@@ -17,7 +17,7 @@ class SingleThing:
         mb.emit(
             "register",
             self.thing.id,
-            self.thing.as_thing_description()
+            self.thing.get_description()
             )
 
     def get_thing(self, _=None):
@@ -33,7 +33,7 @@ class SingleThing:
         return self.thing.title
 
     def register(self):
-        mb.emit("register", self.thing.id, self.thing.as_thing_description())
+        mb.emit("register", self.thing.id, self.thing.get_description())
 
 
 class MultipleThings:
@@ -73,9 +73,9 @@ class MultipleThings:
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
         if self.name == "gateway":
-            mb.emit("discover", thing.id, thing.as_thing_description())
+            mb.emit("discover", thing.id, thing.get_description())
         else:
-            mb.emit("register", thing.id, thing.as_thing_description())
+            mb.emit("register", thing.id, thing.get_description())
         things = [thing.as_thing_description() for _, thing in self.get_things()]
         """ await mqtt.publish(f"thingtalk/things", things) """
 
