@@ -1,16 +1,15 @@
 from loguru import logger
 
 from thingtalk.servient import Servient
-from thingtalk.bindings.http_server import HttpServer
-from thingtalk.wot_impl import WoTImpl
+from thingtalk.bindings.mqtt_server import MqttServer
 
 
 servient = Servient()
-# servient.addServer(
-#     HttpServer(
-#         port=8081
-#     )
-# )
+servient.addServer(
+    MqttServer(
+        port=1883
+    )
+)
 # wot = WoTImpl(servient)
 
 thing = servient.produce(
@@ -29,7 +28,8 @@ thing = servient.produce(
 # thing.writeProperty("count", 0)
 
 # await thing.expose()
-servient.start()
+# servient.start()
+app = servient.app
 
 # logger.info(thing.getThingDescription().title + " ready")
 # logger.info("TD : " + json.dumps(thing.getThingDescription()))
