@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import copy
 import uuid
+import time
 import asyncio
+import gmqtt
+import ujson as json
 
 from typing import TYPE_CHECKING, Optional, Any
 
@@ -20,17 +23,17 @@ from ..protocol_interfaces import ProtocolServer
 
 class MqttServer(ProtocolServer):
     """
-    A HTTP server that can be used to serve ThingTalk code.
+    A MQTT server that can be used to serve ThingTalk code.
     """
 
-    def __init__(self, 
+    def __init__(self,
         host: str='localhost',
         port: str='8000',
         token: str='',
         username: str='',
         password: str='',
-        path="",
-        prefix="",
+        path: str="",
+        prefix: str="",
         **kwargs
     ):
         """
@@ -67,43 +70,6 @@ class MqttServer(ProtocolServer):
 
         self.sub_client.subscribe("things/#", qos=1, subscription_identifier=1, retain_as_published=True)
 
-    async def set_app(self, app):
-        # single or multiple thing
-        @mb.on("register")
-        def on_register(thing_id: str, des):
-            logger.debug("register")
-            mb.on(f"things/{thing_id}/td", partial(self._publish, f"things/{thing_id}/td", retain=True))
-            mb.on(f"things/{thing_id}/event", partial(self._publish, f"things/{thing_id}/event"))
-            mb.on(f"things/{thing_id}/values", partial(self._publish, f"things/{thing_id}/values"))
-            mb.on(f"things/{thing_id}/actions", partial(self._publish, f"things/{thing_id}/actions"))
-            mb.on(f"things/{thing_id}/error", partial(self._publish, f"things/{thing_id}/error"))
-
-            @mb.on(f"things/{thing_id}/get")
-            def get_property(property_names):
-                thing = self.servient.getThing(thing_id)
-                if thing:
-                    for name in property_names:
-                        value = thing.get_property(name)
-                        mb.emit(f"things/{thing_id}/state", {name: value})
-
-            mb.emit(f"things/{thing_id}/td", des)
-
-        # gateway
-        @mb.on("discover")
-        def on_discover(thing_id: str, des):
-            mb.on(f"things/{thing_id}/set", partial(self._publish, f"things/{thing_id}/set"))
-            mb.on(f"things/{thing_id}/request_action", partial(self._publish, f"things/{thing_id}/error"))
-
-            @mb.on(f"things/{thing_id}/get")
-            def get_property(property_names):
-                thing = self.servient.getThing(thing_id)
-                if thing:
-                    for name in property_names:
-                        value = thing.get_property(name)
-                        mb.emit(f"things/{thing_id}/state", {name: value})
-
-            mb.emit(f"things/{thing_id}/td", des)
-
     async def _publish(self, topic: str, payload: dict, retain=False):
         logger.debug(retain)
         if 'values' in topic:
@@ -136,7 +102,68 @@ class MqttServer(ProtocolServer):
         logger.info(f"[CONNECTED {client._client_id}]")
 
     async def on_message(self, client: Client, topic, payload, qos, properties):
-        pass
+        topic_words = topic.split("/")
+
+        if "td" in topic:
+            logger.debug(topic)
+        if len(topic_words) == 3 and topic_words[2] == "td":
+            payload = json.loads(payload)
+            thing = MqttThing(
+                id=payload.get("id"),
+                    title=payload.get("title"),
+                    type_=payload.get("@type"),
+                    description_=payload.get("description"),
+                )
+            for name, metadata in payload.get("properties").items():
+                del metadata["links"]
+                thing.add_property(
+                    Property(
+                            name,
+                            metadata=metadata,
+                        )
+                    )
+            for name, metadata in payload.get("actions").items():
+                del metadata["links"]
+                thing.add_available_mqtt_action(MqttAction, name, metadata)
+
+            for name, metadata in payload.get("events").items():
+                del metadata["links"]
+
+                class MqttEvent(Event):
+                    title = name
+                    schema = metadata
+
+                thing.add_available_event(MqttEvent)
+            thing.href_prefix = f"/things/{thing.id}"
+            self.servient.addThing(thing)
+
+            # mb.emit(f"things/{thing.id}/get", {})
+
+        if len(topic_words) == 3 and topic_words[2] == "values":
+            payload = json.loads(payload)
+            thing = client.app.state.things.get_thing(topic_words[1])
+            if thing:
+                for name, value in payload.items():
+                    await thing.sync_property(name, value)
+
+        if len(topic_words) == 3 and topic_words[2] == "actions":
+            payload = json.loads(payload)
+            thing = self.servient.getThing(topic_words[1])
+            if thing:
+                for key, value in payload.items():
+                    href = value.get("href")
+                    href_words = href.split("/")
+                    action = thing.get_action(key, href_words[4])
+                    if action:
+                        action.set_description(payload)
+        if len(topic_words) == 3 and topic_words[2] == "events":
+            payload = json.loads(payload)
+            thing = self.servient.getThing(topic_words[1])
+            if thing:
+                for name, data in payload.get("data").items():
+                    evt = Event(title=name, data=data)
+                    evt.time = data.get("timestamp")
+                    await thing.add_event(evt)
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")

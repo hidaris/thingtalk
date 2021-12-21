@@ -31,13 +31,14 @@ class Servient:
         server = self.servers[0]
         assert isinstance(server, HttpServer)
         self.app = server.app
-        # ZeroConf ServiceInfo
-        self.service_info: Optional[ServiceInfo] = None
+        self.mqtt = None
+        self.service_info = None
         self.post_init()
 
     def post_init(self):
         zeroconf = AsyncZeroconf()
-
+        # ZeroConf ServiceInfo
+        # service_info: Optional[ServiceInfo] = None
         @self.app.on_event("startup")
         async def start_mdns():
             """Start listening for incoming connections."""
@@ -143,6 +144,11 @@ class Servient:
         if thing.id not in self.things:
             self.things[thing.id] = thing
             logger.debug(f'Servient reset ID {thing.id} with {thing.title}')
+            if len(self.servers) > 1:
+                thing.bind(self.mqtt)
+            else:
+                # bind socket.io
+                pass
             return True
         else:
             return False
@@ -157,7 +163,7 @@ class Servient:
                 serverTasks.append(destroy_server_task)
             asyncio.gather(*serverTasks)
         else:
-            logger.warning(f'Servient was asked to destroy thing but failed to find thing with id {thingId}');
+            logger.warning(f'Servient was asked to destroy thing but failed to find thing with id {thingId}')
 
     def getThing(self, id: str) -> Optional[ExposedThing]:
         return self.things.get(id)
@@ -168,6 +174,21 @@ class Servient:
         for id, thing in self.things.items():
             ts[id] = thing.get_description()
         return ts
+
+    def addServer(self, server: ProtocolServer) -> bool:
+        # add all exposed Things to new server
+        self.servers.append(server)
+        @self.app.on_event("startup")
+        async def start_mqtt():
+            await server.connect()
+
+        @self.app.on_event("shutdown")
+        async def stop_mqtt():
+            await server.disconnect()
+
+        self.mqtt = server
+
+        return True
 
     def getServers(self) -> list[ProtocolServer]:
         # return a copy -- FIXME: not a deep copy
@@ -194,7 +215,7 @@ class Servient:
 
     # will return WoT object
     def start(self) -> None:
-        uvicorn.run(self.app, host='localhost', port=8080)
+        uvicorn.run(self.app, loop='none', host='localhost', port=8080)
 
     async def shutdown(self) -> None:
         for clientFactory in self.clientFactories.values():

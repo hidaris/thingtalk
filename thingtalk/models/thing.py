@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING, Optional
+from functools import partial
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from loguru import logger
+from pyee import AsyncIOEventEmitter
 
 if TYPE_CHECKING:
     from thingtalk.servient import Servient
+    from thingtalk.bindings.mqtt_server import MqttServer
 
 from .event import (
     Event,
@@ -34,7 +37,7 @@ async def perform_action(action):
     await action.start()
 
 
-class ExposedThing:
+class ExposedThing(AsyncIOEventEmitter):
     """A Web Thing."""
 
     type = []
@@ -49,6 +52,7 @@ class ExposedThing:
         owners_ -- the thing's owner(s)
         description -- description of the thing
         """
+        super().__init__()
         self._type = set()
         if not isinstance(type_, list):
             self._type.add(type_)
@@ -89,6 +93,18 @@ class ExposedThing:
         await self.servient.destroyThing(self.id)
         # inform TD observers that thing is gone
         # self.subjectTD.next(None)
+
+    def bind(self, mqtt: MqttServer):
+        self.on(f"things/{self.id}/set", partial(mqtt._publish, f"things/{self.id}/set"))
+        self.on(f"things/{self.id}/request_action", partial(mqtt._publish, f"things/{self.id}/request_action"))
+
+        @self.on(f"things/{self.id}/get")
+        async def get_property(property_names):
+            for name in property_names:
+                value = self.get_property(name)
+                self.emit(f"things/{self.id}/state", {name: value})
+
+        self.emit(f"things/{self.id}/td", self.get_description())
 
     async def subscribe_broadcast(self):
         pass
