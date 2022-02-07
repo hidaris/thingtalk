@@ -1,13 +1,18 @@
 """High-level Action base class implementation."""
+from __future__ import annotations
 
 import typing
 import uuid
+
+from typing import TYPE_CHECKING
 
 try:
     from functools import cached_property
 except ImportError:
     from cached_property import cached_property
 
+if TYPE_CHECKING:
+    from ..models.thing import ExposedThing
 
 from ..utils import timestamp
 
@@ -18,7 +23,7 @@ class Action:
     title: str = ""
     schema: dict = {}
 
-    def __init__(self, thing, input_, id_=uuid.uuid4().hex):
+    def __init__(self, thing: ExposedThing, input_, id_=uuid.uuid4().hex):
         """
         Initialize the object.
         id_ ID of this action, default uuid

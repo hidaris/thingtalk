@@ -7,10 +7,9 @@ from thingtalk.bindings.mqtt_server import MqttServer
 servient = Servient()
 servient.addServer(
     MqttServer(
-        port=1883
+        port='1883'
     )
 )
-# wot = WoTImpl(servient)
 
 thing = servient.produce(
     {

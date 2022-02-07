@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, Any
 
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
+from fastapi.params import Depends
 from fastapi.requests import Request
 from fastapi.responses import UJSONResponse, Response
 from fastapi.routing import APIRouter
@@ -17,7 +18,7 @@ from thingtalk.utils import get_http_host, get_ws_host
 
 if TYPE_CHECKING:
     from thingtalk.servient import Servient
-    from thingtalk.models.thing import ExposedThing
+from thingtalk.models.thing import ExposedThing
 from ..protocol_interfaces import ProtocolServer
 
 
@@ -40,8 +41,10 @@ class HttpServer(ProtocolServer):
         self.path = path
         self.prefix = prefix
         self.app = FastAPI()
-        self.thing_router = APIRouter()
-        self.app.include_router(self.thing_router, tags=["things"])
+        self.expose()
+        # self.thing_router = APIRouter()
+        # self.add_thing_handler()
+        # self.app.include_router(self.thing_router, tags=["things"])
         # self.property_router = APIRouter()
         # self.action_router = APIRouter()
         # self.event_router = APIRouter()
@@ -56,19 +59,29 @@ class HttpServer(ProtocolServer):
         # await server.serve(sockets=None)
         uvicorn.run(self.app, loop="none", host=self.host, port=self.port, log_level="info")
 
-    async def expose(self, thing: ExposedThing, tdTemplate) -> None:
+    def expose(self) -> None:
         """
         Expose a ThingTalk thing to the HTTP server.
         """
-        pass
         # self.app.include_router(self.router, prefix=self.prefix)
-        # self.app.include_router(things.router, prefix=self.prefix, tags=["things"])
-        # self.app.include_router(actions.router, prefix=self.prefix, tags=["actions"])
-        # self.app.include_router(properties.router, prefix=self.prefix, tags=["properties"])
-        # self.app.include_router(events.router, prefix=self.prefix, tags=["properties"])
+        self.app.include_router(self.add_thing_handler(), prefix=self.prefix, tags=["things"])
+        self.app.include_router(self.add_action_handler(), prefix=self.prefix, tags=["actions"])
+        self.app.include_router(self.add_property_handler(), prefix=self.prefix, tags=["properties"])
+        self.app.include_router(self.add_event_handler(), prefix=self.prefix, tags=["events"])
 
-    def add_thing_handler(self):
-        @self.thing_router.get("/things")
+    def get_thing(self, thing_id: str) -> ExposedThing:
+        """
+        Get a thing by its ID.
+        """
+        thing = self.servient.getThing(thing_id)
+        if not thing:
+            raise HTTPException(status_code=404, detail=f"Thing {thing_id} not found")
+        return thing
+
+    def add_thing_handler(self) -> APIRouter:
+        thing_router = APIRouter()
+        
+        @thing_router.get("/things")
         async def get_things(request: Request) -> UJSONResponse:
             """
             Handle a request to / when the server manages multiple things.
@@ -79,8 +92,8 @@ class HttpServer(ProtocolServer):
             things = self.servient.things
 
             descriptions = []
-            for idx, thing in tuple(things.get_things()):
-                description = thing.as_thing_description()
+            for idx, thing in tuple(things.items()):
+                description = thing.get_thing_description()
 
                 description["links"].append(
                     {
@@ -103,9 +116,9 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(descriptions)
 
 
-        @self.thing_router.get("/things/{thing_id}")
+        @thing_router.get("/things/{thing_id}")
         async def get_thing_by_id(
-            request: Request, thing: ExposedThing = Depends(get_thing)
+            request: Request, thing: ExposedThing = Depends(self.get_thing)
         ) -> UJSONResponse:
             """
             Handle a GET request, including websocket requests.
@@ -113,10 +126,7 @@ class HttpServer(ProtocolServer):
             :param thing -- the thing this request is for
             :return UJSONResponse
             """
-            thing = self.servient.getThing(thing.id)
-            if not thing:
-                raise HTTPException(status_code=404, detail="Thing not found")
-            description = thing.get_description()
+            description = thing.get_thing_description()
             description["href"] = thing.href
             description["links"].append(
                 {
@@ -134,43 +144,43 @@ class HttpServer(ProtocolServer):
 
             return UJSONResponse(description)
 
+        return thing_router
 
-    def add_property_handler(self):
-        @self.property_router.get("/properties")
-        async def get_properties(thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+
+    def add_property_handler(self) -> APIRouter:
+        property_router = APIRouter()
+        
+        @property_router.get("/properties")
+        async def get_properties(thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /properties.
             :param thing -- the thing this request is for"
             :return: UJSONResponse
             """
-            thing = self.servient.getThing(thing.id)
-            if not thing:
-                raise HTTPException(status_code=404, detail="Thing not found")
             return UJSONResponse(await thing.get_properties())
 
-        @self.property_router.get("/properties/{property_name}")
+        @property_router.get("/properties/{property_name}")
         async def get_property(
             property_name: str,
-            thing: ExposedThing = Depends(check_property_and_get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /properties/<property>.
             :param: thing-- the thing this request is for"
             :param: property_name -- name of the thing property this request is for
             :return: UJSONResponse
             """
-            thing = self.servient.getThing(thing.id)
-            if not thing:
-                raise HTTPException(status_code=404, detail="Thing not found")
+            if not thing.has_property(property_name):
+                raise HTTPException(status_code=404, detail=f"Property {property_name} not found")
             return UJSONResponse(
                 {property_name: thing.get_property(property_name), }
             )
 
 
-        @self.property_router.put("/properties/{property_name}")
+        @property_router.put("/properties/{property_name}")
         async def put_property(
             property_name: str,
             data: dict[str, Any],
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a PUT request to /properties/<property>.
             :param property_name -- the name of the property from the URL path
@@ -178,9 +188,6 @@ class HttpServer(ProtocolServer):
             :param thing -- the thing this request is for
             :return: UJSONResponse
             """
-            thing = self.servient.getThing(thing.id)
-            if not thing:
-                raise HTTPException(status_code=404, detail="Thing not found")
             try:
                 await thing.set_property(property_name, data[property_name])
             except PropertyError:
@@ -189,14 +196,18 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(
                 {property_name: thing.get_property(property_name), }
             )
+
+        return property_router
     
-    def add_action_handler(self):
+    def add_action_handler(self) -> APIRouter:
+        action_router = APIRouter()
+        
         async def perform_action(action):
             """Perform an Action in a coroutine."""
             await action.start()
 
-        @self.action_router.get("/actions")
-        async def get_actions(thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+        @action_router.get("/actions")
+        async def get_actions(thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /actions.
             :param thing-- the thing this request is for
@@ -205,10 +216,10 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(thing.get_action_descriptions())
 
 
-        @self.action_router.post("/actions")
+        @action_router.post("/actions")
         async def revoke_actions(
             message: dict[str, Any],
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a POST request.
             :param thing -- the thing this request is for
@@ -230,10 +241,10 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(response, status_code=201)
 
 
-        @self.action_router.get("/actions/{action_name}")
+        @action_router.get("/actions/{action_name}")
         async def get_action(
             action_name: str,
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /actions/<action_name>.
             :param thing -- the thing this request is for
@@ -245,11 +256,11 @@ class HttpServer(ProtocolServer):
             )
 
 
-        @self.action_router.post("/actions/{action_name}")
+        @action_router.post("/actions/{action_name}")
         async def invoke_action(
             action_name: str,
             message: dict[str, Any],
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a POST request.
             :param thing -- the thing this request is for
@@ -276,11 +287,11 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(response, status_code=201)
 
 
-        @self.action_router.get("/actions/{action_name}/{action_id}")
+        @action_router.get("/actions/{action_name}/{action_id}")
         async def get_action_by_id(
             action_name: str,
             action_id: str,
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /actions/<action_name>/<action_id>.
             :param thing -- the thing this request is for
@@ -295,11 +306,11 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(action.description)
 
 
-        @self.action_router.put("/actions/{action_name}/{action_id}")
+        @action_router.put("/actions/{action_name}/{action_id}")
         async def update_action_by_id(
             action_name: str,
             action_id: str,
-            thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+            thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a PUT request.
             TODO: this is not yet defined in the spec
@@ -311,11 +322,11 @@ class HttpServer(ProtocolServer):
             return UJSONResponse({"msg": "success"}, status_code=200)
 
 
-        @self.action_router.delete("/actions/{action_name}/{action_id}")
+        @action_router.delete("/actions/{action_name}/{action_id}")
         async def cancel_action_by_id(
             action_name: str,
             action_id: str,
-            thing: ExposedThing = Depends(get_thing)) -> Response:
+            thing: ExposedThing = Depends(self.get_thing)) -> Response:
             """
             Handle a DELETE request.
             :param thing -- the thing this request is for
@@ -328,9 +339,13 @@ class HttpServer(ProtocolServer):
             else:
                 raise HTTPException(status_code=404)
 
-    def add_event_handler(self):
-        @self.event_router.get("/events")
-        async def get_events(thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+        return action_router
+
+    def add_event_handler(self) -> APIRouter:
+        event_router = APIRouter()
+        
+        @event_router.get("/events")
+        async def get_events(thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /events.
             :param thing -- the thing this request is for
@@ -339,8 +354,8 @@ class HttpServer(ProtocolServer):
             return UJSONResponse(thing.get_event_descriptions())
 
 
-        @self.event_router.get("/events/{event_name}")
-        async def get_event(event_name: str, thing: ExposedThing = Depends(get_thing)) -> UJSONResponse:
+        @event_router.get("/events/{event_name}")
+        async def get_event(event_name: str, thing: ExposedThing = Depends(self.get_thing)) -> UJSONResponse:
             """
             Handle a request to /events/<event_name>.
             :param thing -- the thing this request is for
@@ -348,3 +363,5 @@ class HttpServer(ProtocolServer):
             :return UJSONResponse
             """
             return UJSONResponse(thing.get_event_descriptions(event_name=event_name))
+
+        return event_router

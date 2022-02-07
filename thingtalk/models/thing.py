@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from functools import partial
 
 from jsonschema import validate
@@ -43,7 +43,7 @@ class ExposedThing(AsyncIOEventEmitter):
     type = []
     description = ""
 
-    def __init__(self, srv: Servient,  type_=[], init: Optional[str] = None):
+    def __init__(self, init: dict[str, Any]):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -53,21 +53,22 @@ class ExposedThing(AsyncIOEventEmitter):
         description -- description of the thing
         """
         super().__init__()
-        self._type = set()
-        if not isinstance(type_, list):
-            self._type.add(type_)
-        else:
-            self._type = self._type.union(set(type_))
+        # self._type = set()
+        # if not isinstance(type_, list):
+        #     self._type.add(type_)
+        # else:
+        #     self._type = self._type.union(set(type_))
 
-        self._type = self._type.union(set(self.type))
+        # self._type = self._type.union(set(self.type))
+        self._type = init.get("@type", self.type)
 
         if not self.description:
-            self.description = None
+            self.description = init.get("description")
 
-        self.servient = srv
-        self._id: Optional[str] = None
+        # self.servient = srv
+        self._id: Optional[str] = init.get("id")
         self._context: str = "https://webthings.io/schemas"
-        self._title: Optional[str] = None
+        self._title: Optional[str] = init.get("title")
         self.properties: dict[str, Property] = {}
         self.available_actions = {}
         self.available_events = {}
@@ -79,20 +80,20 @@ class ExposedThing(AsyncIOEventEmitter):
         self.subscribe_topics = [f"things/{self._id}"]
         mb.on(f"things/{self._id}", self.dispatch)
 
-    async def expose(self):
-        logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
+    # async def expose(self):
+    #     logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
 
-        # let servient forward exposure to the servers
-        await self.servient.expose(self)
-        # inform TD observers
-        # self.subjectTD.next(self.getThingDescription())
+    #     # let servient forward exposure to the servers
+    #     await self.servient.expose(self)
+    #     # inform TD observers
+    #     # self.subjectTD.next(self.getThingDescription())
 
-    async def destroy(self):
-        logger.debug(f'ExposedThing {self.title} destroying the thing and its interactions')
+    # async def destroy(self):
+    #     logger.debug(f'ExposedThing {self.title} destroying the thing and its interactions')
 
-        await self.servient.destroyThing(self.id)
-        # inform TD observers that thing is gone
-        # self.subjectTD.next(None)
+    #     await self.servient.destroyThing(self.id)
+    #     # inform TD observers that thing is gone
+    #     # self.subjectTD.next(None)
 
     def bind(self, mqtt: MqttServer):
         self.on(f"things/{self.id}/set", partial(mqtt._publish, f"things/{self.id}/set"))
@@ -141,7 +142,7 @@ class ExposedThing(AsyncIOEventEmitter):
         else:
             await self.error_notify(f"Unknown messageType: {msg_type}", message)
 
-    def get_description(self):
+    def get_thing_description(self):
         """
         Return the thing state as a Thing Description.
         Returns the state as a dictionary.

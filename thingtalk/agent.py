@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
-import uvicorn
 
 from uuid import uuid4
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -11,10 +10,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from loguru import logger
 from zeroconf.asyncio import AsyncZeroconf, ServiceInfo
 
-from thingtalk.bindings.http_server import HttpServer
-from thingtalk.bindings.mqtt_server import MqttServer 
-
-from .wot_impl import WoTImpl
+from thingtalk.bindings.mqtt_server import MqttServer
 
 from .models.thing import ExposedThing 
 from .models.event import Event
@@ -24,22 +20,21 @@ from .utils import get_ip
 
 
 if TYPE_CHECKING:
-    from protocol_interfaces import ProtocolClientFactory, ProtocolServer, ProtocolClient
+    from protocol_interfaces import ProtocolServer
 
 
-class Servient:
-    servers: list[ProtocolServer] = [HttpServer()]
-    clientFactories: dict[str, ProtocolClientFactory] = {}
+class Agent:
+    servers: list[ProtocolServer] = []
     things: dict[str, ExposedThing] = {}
 
     def __init__(self):
-        server = self.servers[0]
-        assert isinstance(server, HttpServer)
-        self.app = server.app
-        self.servers[0].servient = self
-        self.mqtt = None
-        self.service_info = None
-        self.post_init()
+        self.server = MqttServer(
+            port='1883'
+        )
+        # self.app = server.app
+        self.server.agent = self
+        # self.mqtt = None
+        # self.post_init()
 
     def post_init(self):
         zeroconf = AsyncZeroconf()
@@ -97,10 +92,7 @@ class Servient:
         
         asyncio.gather(*serverTasks)
 
-    # def discover(self, filter: Optional[WoT.ThingFilter]) -> WoT.ThingDiscovery:
-    #     return ThingDiscoveryImpl(filter)
-
-    # async def consume(self, td: dict) -> ConsumedThing:
+    # async def consume(self, td: WoT.ThingDescription) -> ConsumedThing:
     #     try:
     #         thing = TD.parseTD(JSON.stringify(td), True)
     #         newThing: ConsumedThing = ConsumedThing(self.srv, thing)
@@ -113,39 +105,6 @@ class Servient:
     #         return newThing
     #     except Exception as e:
     #         raise Exception("Cannot consume TD because " + e.message)
-    
-    def produce_mqtt(self, des: dict) -> ExposedThing:
-        logger.debug(f'Servient producing MQTT Thing {des["title"]}')
-        thing = MqttThing(
-            init=des
-        )
-        for name, metadata in des.get("properties", {}).items():
-            del metadata["links"]
-            thing.add_property(
-                Property(
-                    name,
-                    metadata=metadata,
-                )
-            )
-        for name, metadata in des.get("actions", {}).items():
-            del metadata["links"]
-            thing.add_available_mqtt_action(MqttAction, name, metadata)
-
-        for name, metadata in des.get("events", {}).items():
-            del metadata["links"]
-
-            class MqttEvent(Event):
-                title = name
-                schema = metadata
-
-            thing.add_available_event(MqttEvent)
-        thing.href_prefix = f"/things/{thing.id}"
-
-        if self.addThing(thing):
-            return thing
-        else:
-            raise Exception("Thing already exists: " + thing.title)
-
     '''
      * create a new Thing
      *
@@ -180,13 +139,13 @@ class Servient:
 
         if thing.id not in self.things:
             self.things[thing.id] = thing
-            logger.debug(f'Servient add thing ID {thing.id} with {thing.title}')
-            if self.mqtt:
-                logger.debug(f'Servient binding {thing.title} to MQTT')
-                self.mqtt.expose(thing)
-            else:
-                # bind socket.io
-                pass
+            logger.debug(f'Servient reset ID {thing.id} with {thing.title}')
+            self.server.expose(thing)
+            # if len(self.servers) > 1:
+            #     # thing.bind(self.mqtt)
+            # else:
+            #     # bind socket.io
+            #     pass
             return True
         else:
             return False
@@ -213,54 +172,14 @@ class Servient:
             ts[id] = thing.get_description()
         return ts
 
-    def addServer(self, server: MqttServer) -> bool:
-        # add all exposed Things to new server
-        self.servers.append(server)
-        @self.app.on_event("startup")
-        async def start_mqtt():
-            await server.connect()
-
-        @self.app.on_event("shutdown")
-        async def stop_mqtt():
-            await server.disconnect()
-
-        self.mqtt = server
-        self.mqtt.servient = self
-        # self.mqtt.start(self)
-
-        return True
-
     def getServers(self) -> list[ProtocolServer]:
         # return a copy -- FIXME: not a deep copy
-        return self.servers[0]
+        return self.servers
 
-    def addClientFactory(self, clientFactory: ProtocolClientFactory) -> None:
-        self.clientFactories[clientFactory.scheme] = clientFactory
-
-    def hasClientFor(self, scheme: str) -> bool:
-        logger.debug(f'Servient checking for {scheme} scheme in {self.clientFactories.size} ClientFactories')
-        return scheme in self.clientFactories
-
-    def getClientFor(self, scheme: str) -> ProtocolClient:
-        if scheme in self.clientFactories:
-            logger.debug(f'Servient creating client for scheme {scheme}')
-            return self.clientFactories.get(scheme).getClient()
-        else:
-            # FIXME returning null was bad - Error or Promise?
-            # h0ru5: caller cannot react gracefully - I'd throw Error
-            raise Exception(f'Servient has no ClientFactory for scheme {scheme}')
-
-    def getClientSchemes(self) -> list[str]:
-        return list(self.clientFactories.keys())
-
-    # will return WoT object
     def start(self) -> None:
-        uvicorn.run(self.app, loop='none', host='localhost', port=8080)
+        self.server.start()
 
     async def shutdown(self) -> None:
-        for clientFactory in self.clientFactories.values():
-            clientFactory.destroy()
-        
         tasks = [asyncio.create_task(server.stop()) for server in self.servers]
         
         await asyncio.gather(**tasks)
