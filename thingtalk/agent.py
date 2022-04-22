@@ -40,6 +40,7 @@ class Agent:
         zeroconf = AsyncZeroconf()
         # ZeroConf ServiceInfo
         # service_info: Optional[ServiceInfo] = None
+
         @self.app.on_event("startup")
         async def start_mdns():
             """Start listening for incoming connections."""

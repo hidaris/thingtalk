@@ -78,7 +78,7 @@ class ExposedThing(AsyncIOEventEmitter):
         self._href_prefix = ""
         self._ui_href = ""
         self.subscribe_topics = [f"things/{self._id}"]
-        mb.on(f"things/{self._id}", self.dispatch)
+        # mb.on(f"things/{self._id}", self.dispatch)
 
     # async def expose(self):
     #     logger.debug(f'ExposedThing {self.title} exposing all Interactions and TD')
@@ -430,11 +430,11 @@ class ExposedThing(AsyncIOEventEmitter):
 
     async def bulk_sync_property(self, data: dict):
         """
-        Bulk yync property value from cloud or mqtt etc.
+        Bulk sync property value from cloud or mqtt etc.
         property_name -- name of the property to set
         value -- value to set
         """
-        logger.info(f"id {self.id}")
+        # logger.info(f"id {self.id}")
         for property_name, value in tuple(data.items()):
             prop = self.find_property(property_name)
             if not prop:
@@ -581,7 +581,7 @@ class ExposedThing(AsyncIOEventEmitter):
         }
         # try:
         #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/values", message)
+        self.emit(f"things/{self.id}/values", message)
         # except ValidationError as e:
         #     logger.error(str(e))
 
@@ -603,7 +603,7 @@ class ExposedThing(AsyncIOEventEmitter):
 
         # try:
         #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/error", message)
+        self.emit(f"things/{self.id}/error", message)
         # except ValidationError as e:
         #     logger.error(str(e))
 
@@ -626,7 +626,7 @@ class ExposedThing(AsyncIOEventEmitter):
         }
         # try:
         #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/actions", message)
+        self.emit(f"things/{self.id}/actions", message)
         # except ValidationError as e:
         #     logger.error(str(e))
 
@@ -646,52 +646,41 @@ class ExposedThing(AsyncIOEventEmitter):
         }
         # try:
         #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/event", message)
+        self.emit(f"things/{self.id}/event", message)
         # except ValidationError as e:
         #     logger.error(str(e))
 
-    def add_owner(self, owner: str):
-        """
-        Add a new owner.
-        owner -- the owner
-        """
-        self.owners.append(owner)
 
-    def get_owners(self):
-        """Get this thing's owner(s)."""
-        return self.owners
+# class Server(ExposedThing):
+#     type = ["Server"]
+#     description = "Web Thing Environment"
 
+#     def __init__(self):
+#         super().__init__(
+#             "urn:thingtalk:server",
+#             "Web Thing Environment",
+#         )
 
-class Server(ExposedThing):
-    type = ["Server"]
-    description = "Web Thing Environment"
+#         self.add_property(
+#             Property(
+#                 "state",
+#                 value="ON",
+#                 metadata={
+#                     "@type": "ServerStateProperty",
+#                     "title": "State",
+#                     "display_name": "state",
+#                     "type": "string",
+#                     "enum": ["ON", "OFF", "REBOOT"],
+#                     "description": "state of thingtalk server",
+#                 },
+#             )
+#         )
 
-    def __init__(self):
-        super().__init__(
-            "urn:thingtalk:server",
-            "Web Thing Environment",
-        )
-
-        self.add_property(
-            Property(
-                "state",
-                value="ON",
-                metadata={
-                    "@type": "ServerStateProperty",
-                    "title": "State",
-                    "display_name": "state",
-                    "type": "string",
-                    "enum": ["ON", "OFF", "REBOOT"],
-                    "description": "state of thingtalk server",
-                },
-            )
-        )
-
-        self.add_available_events(
-            [
-                ThingPairingEvent,
-                ThingPairedEvent,
-                ThingRemovedEvent,
-                ThingPairFailedEvent,
-            ]
-        )
+#         self.add_available_events(
+#             [
+#                 ThingPairingEvent,
+#                 ThingPairedEvent,
+#                 ThingRemovedEvent,
+#                 ThingPairFailedEvent,
+#             ]
+#         )

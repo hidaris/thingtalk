@@ -15,6 +15,7 @@ from gmqtt import Client
 from loguru import logger
 
 from thingtalk.models.errors import PropertyError
+from thingtalk.models.event import Event
 from thingtalk.utils import get_http_host, get_ws_host
 
 if TYPE_CHECKING:
@@ -174,21 +175,22 @@ class MqttServer(ProtocolServer):
             if len(topic_words) == 3 and topic_words[0] == "things" and topic_words[2] == "request_action":
                 thing = self.agent.getThing(topic_words[1])
                 id_ = payload.get("id")
-                for action_name, action_params in payload.items():
-                    if action_name == "id":
-                        continue
+                if thing:
+                    for action_name, action_params in payload.items():
+                        if action_name == "id":
+                            continue
 
-                    input_ = None
-                    if "input" in action_params:
-                        input_ = action_params["input"]
+                        input_ = None
+                        if "input" in action_params:
+                            input_ = action_params["input"]
 
-                    if id_:
-                        action = await thing.perform_action(action_name, input_, id_)
-                    else:
-                        action = await thing.perform_action(action_name, input_)
+                        if id_:
+                            action = await thing.perform_action(action_name, input_, id_)
+                        else:
+                            action = await thing.perform_action(action_name, input_)
 
-                    if action:
-                        asyncio.create_task(action.start())
+                        if action:
+                            asyncio.create_task(action.start())
 
     def on_disconnect(self, client: Client, packet, exc=None):
         logger.info(f"[DISCONNECTED {client._client_id}]")
