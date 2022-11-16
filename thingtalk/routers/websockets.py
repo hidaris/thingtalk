@@ -55,13 +55,17 @@ async def websocket_endpoint(websocket: WebSocket):
             if msg_type == "subscribe":
                 for thing_id in message.data.get("thing_ids", []):
                     logger.info(f"subscribe topic things/{thing_id}/state things/{thing_id}/event things/{thing_id}/error")
+                    thing = websocket.app.state.get_thing(thing_id)
                     for topic_type in ["state", "event", "error"]:
-                        subscribe_topic = f"things/{thing_id}/{topic_type}"
-                        mb.on(subscribe_topic, send)
-                        subscribe_topics.append(subscribe_topic)
-                    subscribe_table.update({id(websocket): subscribe_topics})
+                        # subscribe_topic = f"things/{thing_id}/{topic_type}"
+                        thing.on(topic_type, send)
+                        # subscribe_topics.append(subscribe_topic)
+                    # subscribe_table.update({id(websocket): subscribe_topics})
             else:
-                mb.emit(message.topic, message)
+                thing_id = message.topic.replace('things/', '')
+                thing = websocket.app.state.get_thing(thing_id)
+                if thing:
+                    thing.emit(message.messageType, message)
 
     except (WebSocketDisconnect, ConnectionClosedOK) as e:
         logger.info(f"websocket {id(websocket)} was closed with code {e}")

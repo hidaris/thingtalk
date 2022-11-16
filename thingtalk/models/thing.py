@@ -1,12 +1,12 @@
 """High-level Thing base class implementation."""
 
 import asyncio
-from typing import Dict
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from loguru import logger
+from pyee import AsyncIOEventEmitter
 
 from .event import (
     Event,
@@ -20,7 +20,7 @@ from .property import Property
 from .action import Action
 from .errors import PropertyError
 
-from ..toolkits.event_bus import mb
+# from ..toolkits.event_bus import mb
 from ..schema import InputMsg, OutMsg
 
 
@@ -29,7 +29,7 @@ async def perform_action(action):
     await action.start()
 
 
-class Thing:
+class Thing(AsyncIOEventEmitter):
     """A Web Thing."""
 
     type = []
@@ -58,51 +58,54 @@ class Thing:
         self._id = id_
         self._context = "https://iot.mozilla.org/schemas"
         self._title = title
-        self.properties: Dict[str, Property] = {}
+        self.properties: dict[str, Property] = {}
         self.available_actions = {}
         self.available_events = {}
         self.actions = {}
         self.events = []
-        self.owners = []
         self._href_prefix = ""
         self._ui_href = ""
         self.subscribe_topics = [f"things/{self._id}"]
-        mb.on(f"things/{self._id}", self.dispatch)
+
+        self.on("setProperty", self.handle_set_property)
+        self.on("syncProperty", self.handle_sync_property)
+        self.on("requestAction", self.handle_request_action)
 
     async def subscribe_broadcast(self):
         pass
 
-    async def remove_listener(self):
-        for topic in self.subscribe_topics:
-            logger.info(f"remove topic {topic}'s listener dispatch")
-            mb.remove_listener(topic, self.dispatch)
+    # async def remove_listener(self):
+    #     for topic in self.subscribe_topics:
+    #         logger.info(f"remove topic {topic}'s listener dispatch")
+    #         self.remove_listener()
+    #         mb.remove_listener(topic, self.dispatch)
 
-    async def dispatch(self, message: InputMsg):
-        logger.debug(f"dispatch {message}")
-        msg_type = message.messageType
+    # async def dispatch(self, message: InputMsg):
+    #     logger.debug(f"dispatch {message}")
+    #     msg_type = message.messageType
 
-        if msg_type == "setProperty":
-            for property_name, property_value in message.data.items():
-                await self.set_property(property_name, property_value)
+    async def handle_set_property(self, msg):
+        for property_name, property_value in msg.data.items():
+            await self.set_property(property_name, property_value)
 
-        elif msg_type == "syncProperty":
-            for property_name, property_value in message.data.items():
-                await self.sync_property(property_name, property_value)
+    async def handle_sync_property(self, msg):
+        for property_name, property_value in msg.data.items():
+            await self.sync_property(property_name, property_value)
 
-        elif msg_type == "requestAction":
-            for action_name, action_params in message.data.items():
-                input_ = None
-                if "input" in action_params:
-                    input_ = action_params["input"]
+    async def handle_request_action(self, msg):
+        for action_name, action_params in msg.data.items():
+            input_ = None
+            if "input" in action_params:
+                input_ = action_params["input"]
 
-                action = await self.perform_action(action_name, input_)
-                if action:
-                    asyncio.create_task(perform_action(action))
-                else:
-                    await self.error_notify("Invalid action request", message)
+            action = await self.perform_action(action_name, input_)
+            if action:
+                asyncio.create_task(perform_action(action))
+            else:
+                await self.error_notify("Invalid action request", msg)
 
-        else:
-            await self.error_notify(f"Unknown messageType: {msg_type}", message)
+        # else:
+        #     await self.error_notify(f"Unknown messageType: {msg_type}", message)
 
     def as_thing_description(self):
         """
@@ -362,6 +365,7 @@ class Thing:
             prop.value = value
             await self.property_notify({property_name: value})
             await self.property_action(prop)
+            # self.emit('propertyAction', prop)
         except PropertyError as e:
             await self.error_notify(str(e))
 
@@ -533,11 +537,10 @@ class Thing:
             "messageType": "propertyStatus",
             "data": data,
         }
-        # try:
-        #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/values", message)
-        # except ValidationError as e:
-        #     logger.error(str(e))
+
+        # self.emit(f"things/{self.id}/values", message)
+        self.emit("values", message)
+
 
     async def error_notify(self, error_, request=None):
         """
@@ -555,11 +558,8 @@ class Thing:
         if request:
             message.update({"request": request})
 
-        # try:
-        #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/error", message)
-        # except ValidationError as e:
-        #     logger.error(str(e))
+        self.emit("error", message)
+
 
     async def property_action(self, property_):
         """
@@ -578,11 +578,9 @@ class Thing:
             "messageType": "actionStatus",
             "data": action.description,
         }
-        # try:
-        #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/actions", message)
-        # except ValidationError as e:
-        #     logger.error(str(e))
+
+        self.emit("actions", message)
+
 
     async def event_notify(self, event):
         """
@@ -598,22 +596,8 @@ class Thing:
             "messageType": "event",
             "data": event.description,
         }
-        # try:
-        #     message = OutMsg(**message)
-        mb.emit(f"things/{self.id}/event", message)
-        # except ValidationError as e:
-        #     logger.error(str(e))
 
-    def add_owner(self, owner: str):
-        """
-        Add a new owner.
-        owner -- the owner
-        """
-        self.owners.append(owner)
-
-    def get_owners(self):
-        """Get this thing's owner(s)."""
-        return self.owners
+        self.emit("event", message)
 
 
 class Server(Thing):

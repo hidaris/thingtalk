@@ -1,4 +1,4 @@
-import ujson as json
+import orjson as json
 import re
 import socket
 import time

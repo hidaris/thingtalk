@@ -1,7 +1,7 @@
 import asyncio
 
 import gmqtt
-import ujson as json
+import orjson as json
 
 from loguru import logger
 
