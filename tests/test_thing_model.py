@@ -73,11 +73,11 @@ def http_request(method, path, data=None):
         headers["Authorization"] = _AUTHORIZATION_HEADER
 
     if data is None:
-        response = client.request(method, url, headers=headers, proxies=proxies)
+        response = client.request(method, url, headers=headers)
     else:
         headers["Content-Type"] = "application/json"
         response = client.request(
-            method, url, json=data, headers=headers, proxies=proxies
+            method, url, json=data, headers=headers
         )
 
     if response.content:

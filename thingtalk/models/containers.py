@@ -1,8 +1,12 @@
+from typing import TYPE_CHECKING, Optional
 from loguru import logger
 
 from .event import ThingPairedEvent, ThingRemovedEvent
-from .thing import Thing
+
 from ..toolkits.event_bus import mb
+
+if TYPE_CHECKING:
+    from .thing import Thing
 
 
 class SingleThing:
@@ -14,11 +18,11 @@ class SingleThing:
         thing -- the thing to store
         """
         self.thing = thing
-        mb.emit(
-            "register",
-            self.thing.id,
-            self.thing.as_thing_description()
-            )
+        # mb.emit(
+        #     "register",
+        #     self.thing.id,
+        #     self.thing.as_thing_description()
+        #     )
 
     def get_thing(self, _=None):
         """Get the thing at the given index."""
@@ -32,8 +36,8 @@ class SingleThing:
         """Get the mDNS server name."""
         return self.thing.title
 
-    def register(self):
-        mb.emit("register", self.thing.id, self.thing.as_thing_description())
+    # def register(self):
+    #     mb.emit("register", self.thing.id, self.thing.as_thing_description())
 
 
 class MultipleThings:
@@ -49,7 +53,7 @@ class MultipleThings:
         self.name = name
         self.server = self.things.get('urn:thingtalk:server')
 
-    def get_thing(self, idx):
+    def get_thing(self, idx) -> Optional[Thing]:
         """
         Get the thing at the given index.
         idx -- the index
@@ -72,12 +76,6 @@ class MultipleThings:
         logger.debug("add_thing")
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
-        if self.name == "gateway":
-            mb.emit("discover", thing.id, thing.as_thing_description())
-        else:
-            mb.emit("register", thing.id, thing.as_thing_description())
-        things = [thing.as_thing_description() for _, thing in self.get_things()]
-        """ await mqtt.publish(f"thingtalk/things", things) """
 
         # await self.server.add_event(ThingPairedEvent({
         #     '@type': list(thing._type),

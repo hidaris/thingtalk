@@ -26,10 +26,9 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.8"
 fastapi = "^0.87"
-uvicorn = {extras = ["standard"], version = "^0.19.0"}
+uvicorn = {extras = ["standard"], version = "^0.20.0"}
 orjson = "^3.8.1"
 email_validator = "^1.1.1"
-# httpx = "^0.17.0"
 pyee = "^9.0.0"
 jsonschema = "^4.17.0"
 ifaddr = "^0.2.0"
@@ -37,14 +36,11 @@ zeroconf = "^0.39.0"
 loguru = "^0.6.0"
 mkdocs-material = { version = "^8.5.0", optional = true }
 async-cron = "^1.6.2"
-# gmqtt = "^0.6.9"
 cached-property = { version = "^1.5", python = "~3.7"}
-python-socketio = "^5.7.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.2"
 pytest-asyncio = "^0.20.0"
-requests = "^2.24.0"
 
 [tool.poetry.extras]
 docs = ["mkdocs-material"]
