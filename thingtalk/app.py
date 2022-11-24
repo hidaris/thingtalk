@@ -4,16 +4,15 @@ from fastapi import FastAPI, APIRouter
 from loguru import logger
 from zeroconf import Zeroconf, ServiceInfo
 
-from .routers.mqtt import mqtt
 from .utils import get_ip
 from .models.thing import Server
 from .models.containers import MultipleThings
 from .routers import things, properties, actions, events, websockets
-from .toolkits import mb
+
 
 app = FastAPI(
     title="ThingTalk",
-    version="0.7.12",
+    version="0.9.0",
     description="Web of Things framework, high performance, easy to learn, fast to code, ready for production",
 )
 server = Server()
@@ -49,19 +48,6 @@ async def stop_mdns():
     """Stop listening."""
     zeroconf.unregister_service(app.state.service_info)
     zeroconf.close()
-
-
-# @app.on_event("startup")
-# async def startup():
-#     await mqtt.set_app(app)
-#     await mqtt.connect()
-    # await app.state.things.add_thing(server)
-
-
-# @app.on_event("shutdown")
-# async def shutdown():
-#     await mqtt.disconnect()
-#     mb.remove_all_listeners()
 
 
 restapi = APIRouter()

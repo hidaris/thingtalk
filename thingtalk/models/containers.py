@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 from loguru import logger
 
 from .event import ThingPairedEvent, ThingRemovedEvent
 
-from ..toolkits.event_bus import mb
 
 if TYPE_CHECKING:
     from .thing import Thing
@@ -75,6 +76,7 @@ class MultipleThings:
     async def add_thing(self, thing: Thing):
         logger.debug("add_thing")
         self.things.update({thing.id: thing})
+        await thing.init_subscripe()
         await thing.subscribe_broadcast()
 
         # await self.server.add_event(ThingPairedEvent({

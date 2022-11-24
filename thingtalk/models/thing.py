@@ -6,7 +6,7 @@ from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from loguru import logger
-from pyee import AsyncIOEventEmitter
+from pyee.asyncio import AsyncIOEventEmitter
 
 from .event import (
     Event,
@@ -67,6 +67,11 @@ class Thing(AsyncIOEventEmitter):
         self._ui_href = ""
         self.subscribe_topics = [f"things/{self._id}"]
 
+        # self.on("setProperty", self.handle_set_property)
+        # self.on("syncProperty", self.handle_sync_property)
+        # self.on("requestAction", self.handle_request_action)
+
+    async def init_subscripe(self):
         self.on("setProperty", self.handle_set_property)
         self.on("syncProperty", self.handle_sync_property)
         self.on("requestAction", self.handle_request_action)

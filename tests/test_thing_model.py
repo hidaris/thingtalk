@@ -58,11 +58,6 @@ def http_request(method, path, data=None):
         "Accept": "application/json",
     }
 
-    proxies = {
-        "http": None,
-        "https": None,
-    }
-
     if _DEBUG:
         if data is None:
             print("Request:  {} {}".format(method, url))

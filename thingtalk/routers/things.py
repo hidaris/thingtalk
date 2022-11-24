@@ -20,34 +20,10 @@ async def get_things(request: Request) -> ORJSONResponse:
     :param request -- the request
     :return ORJSONResponse
     """
-    if request.app.state.mode == "gateway":
-        things = request.app.state.things
+    things = request.app.state.things
 
-        descriptions = []
-        for idx, thing in tuple(things.get_things()):
-            description = thing.as_thing_description()
-
-            description["links"].append(
-                {
-                    "rel": "alternate",
-                    "href": f"{get_ws_href(request)}{thing.href}",
-                }
-            )
-            description["base"] = f"{get_http_href(request)}{thing.href}"
-
-            description["securityDefinitions"] = {
-                "nosec_sc": {
-                    "scheme": "nosec",
-                },
-            }
-            description["security"] = "nosec_sc"
-
-            bak = copy.deepcopy(description)
-            descriptions.append(bak)
-
-        return ORJSONResponse(descriptions)
-    else:
-        thing = request.app.state.thing.get_thing()
+    descriptions = []
+    for idx, thing in tuple(things.get_things()):
         description = thing.as_thing_description()
 
         description["links"].append(
@@ -65,12 +41,14 @@ async def get_things(request: Request) -> ORJSONResponse:
         }
         description["security"] = "nosec_sc"
 
-        return ORJSONResponse(description)
+        bak = copy.deepcopy(description)
+        descriptions.append(bak)
 
+    return ORJSONResponse(descriptions)
 
 @router.get("/things/{thing_id}")
 async def get_thing_by_id(
-    request: Request, thing: Thing = Depends(get_thing)
+        request: Request, thing: Thing = Depends(get_thing)
 ) -> ORJSONResponse:
     """
     Handle a GET request, including websocket requests.
