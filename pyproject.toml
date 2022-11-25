@@ -16,36 +16,34 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
 ]
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/hidaris/thingtalk/issues"
 
 [tool.poetry.dependencies]
-python = "^3.7"
-fastapi = "^0.63.0"
-uvicorn = {extras = ["standard"], version = "^0.13.0"}
-ujson = "^4.0.0"
+python = "^3.8"
+fastapi = "^0.87"
+uvicorn = {extras = ["standard"], version = "^0.20.0"}
+orjson = "^3.8.1"
 email_validator = "^1.1.1"
-httpx = "^0.16.0"
-pyee = "^8.1.0"
-jsonschema = "^3.2.0"
-ifaddr = "^0.1.7"
-zeroconf = "^0.28.2"
-loguru = "^0.5.2"
-mkdocs-material = { version = "^6.1.6", optional = true }
+pyee = "^9.0.0"
+jsonschema = "^4.17.0"
+ifaddr = "^0.2.0"
+zeroconf = "^0.39.0"
+loguru = "^0.6.0"
+mkdocs-material = { version = "^8.5.0", optional = true }
 async-cron = "^1.6.2"
 gmqtt = "^0.6.9"
-dynaconf = "^3.1.2"
+
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.0"
-pytest-asyncio = "^0.14.0"
-requests = "^2.24.0"
-black = {version = "^20.8b1", allow-prereleases = true}
+pytest = "^7.2"
+pytest-asyncio = "^0.20.0"
+httpx = "^0.23.0"
 
 [tool.poetry.extras]
 docs = ["mkdocs-material"]

@@ -1,7 +1,7 @@
 """High-level Thing base class implementation."""
 
 import asyncio
-from typing import Dict
+from typing import Dict, List, Optional
 
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
@@ -32,10 +32,10 @@ async def perform_action(action):
 class Thing:
     """A Web Thing."""
 
-    type = []
+    type_alias = []
     description = ""
 
-    def __init__(self, id_, title, type_=[], description_=""):
+    def __init__(self, id_: str, title: str, type_: Optional[List[str]]=None, description_: str=""):
         """
         Initialize the object.
         id_ -- the thing's unique ID - must be a URI
@@ -44,19 +44,24 @@ class Thing:
         owners_ -- the thing's owner(s)
         description -- description of the thing
         """
-        self._type = set()
-        if not isinstance(type_, list):
+        self._type: set[str] = set()
+
+        if type_ is None:
+            if self.type_alias is []:
+                self._type = self._type.union(set([self.__class__.__name__]))
+            else:
+                self._type = self._type.union(set(self.type_alias))
+
+        elif not isinstance(type_, list):
             self._type.add(type_)
         else:
             self._type = self._type.union(set(type_))
-
-        self._type = self._type.union(set(self.type))
 
         if not self.description:
             self.description = description_
 
         self._id = id_
-        self._context = "https://iot.mozilla.org/schemas"
+        self._context = "https://webthings.io/schemas"
         self._title = title
         self.properties: Dict[str, Property] = {}
         self.available_actions = {}
@@ -164,8 +169,7 @@ class Thing:
         if self.description:
             thing["description"] = self.description
 
-        if self._type:
-            thing["@type"] = list(self._type)
+        thing["@type"] = self.get_type()
 
         return thing
 
@@ -247,7 +251,7 @@ class Thing:
         Get the type(s) of the thing.
         Returns the list of types.
         """
-        return self.type
+        return list(self._type)
 
     def get_description(self):
         """
@@ -309,7 +313,7 @@ class Thing:
         if property_.name in self.properties:
             del self.properties[property_.name]
 
-    def find_property(self, property_name):
+    def find_property(self, property_name: str):
         """
         Find a property by name.
         property_name -- the property to find
@@ -317,7 +321,7 @@ class Thing:
         """
         return self.properties.get(property_name, None)
 
-    async def get_property(self, property_name):
+    async def get_property(self, property_name: str):
         """
         Get a property's value.
         property_name -- the property to get the value of
@@ -336,7 +340,7 @@ class Thing:
         """
         return {prop.name: await prop.get_value() for prop in self.properties.values()}
 
-    def has_property(self, property_name):
+    def has_property(self, property_name: str):
         """
         Determine whether or not this thing has a given property.
         property_name -- the property to look for

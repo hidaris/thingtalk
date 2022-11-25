@@ -3,7 +3,7 @@ import copy
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.requests import Request
-from fastapi.responses import UJSONResponse
+from fastapi.responses import ORJSONResponse
 
 from ..dependencies import get_thing
 from ..models.thing import Thing
@@ -13,12 +13,12 @@ router = APIRouter()
 
 
 @router.get("/things")
-async def get_things(request: Request) -> UJSONResponse:
+async def get_things(request: Request) -> ORJSONResponse:
     """
     Handle a request to / when the server manages multiple things.
     Handle a GET request.
     :param request -- the request
-    :return UJSONResponse
+    :return ORJSONResponse
     """
     things = request.app.state.things
 
@@ -40,18 +40,18 @@ async def get_things(request: Request) -> UJSONResponse:
         bak = copy.deepcopy(description)
         descriptions.append(bak)
 
-    return UJSONResponse(descriptions)
+    return ORJSONResponse(descriptions)
 
 
 @router.get("/things/{thing_id}")
 async def get_thing_by_id(
         request: Request,
-        thing: Thing = Depends(get_thing)) -> UJSONResponse:
+        thing: Thing = Depends(get_thing)) -> ORJSONResponse:
     """
     Handle a GET request, including websocket requests.
     :param request: the request
     :param thing -- the thing this request is for
-    :return UJSONResponse
+    :return ORJSONResponse
     """
     description = thing.as_thing_description()
     description["href"] = thing.href
@@ -67,4 +67,4 @@ async def get_thing_by_id(
     }
     description["security"] = "nosec_sc"
 
-    return UJSONResponse(description)
+    return ORJSONResponse(description)

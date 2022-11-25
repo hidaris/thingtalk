@@ -1,4 +1,4 @@
-import ujson as json
+import orjson as json
 import re
 import socket
 import time
@@ -58,11 +58,6 @@ def http_request(method, path, data=None):
         "Accept": "application/json",
     }
 
-    proxies = {
-        "http": None,
-        "https": None,
-    }
-
     if _DEBUG:
         if data is None:
             print("Request:  {} {}".format(method, url))
@@ -73,11 +68,11 @@ def http_request(method, path, data=None):
         headers["Authorization"] = _AUTHORIZATION_HEADER
 
     if data is None:
-        response = client.request(method, url, headers=headers, proxies=proxies)
+        response = client.request(method, url, headers=headers)
     else:
         headers["Content-Type"] = "application/json"
         response = client.request(
-            method, url, json=data, headers=headers, proxies=proxies
+            method, url, json=data, headers=headers
         )
 
     if response.content:
@@ -104,7 +99,7 @@ def test_thing_description():
     assert body["title"] == "My Lamp"
     assert body["security"] == "nosec_sc"
     assert body["securityDefinitions"]["nosec_sc"]["scheme"] == "nosec"
-    assert body["@context"] == "https://iot.mozilla.org/schemas"
+    assert body["@context"] == "https://webthings.io/schemas"
     assert lists_equal(body["@type"], ["OnOffSwitch", "Light"])
     assert body["description"] == "A web connected lamp"
     assert body["properties"]["on"]["@type"] == "OnOffProperty"

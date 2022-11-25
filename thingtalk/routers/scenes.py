@@ -8,7 +8,7 @@ from loguru import logger
 from pydantic import ValidationError, BaseModel, constr
 
 from fastapi import Depends, APIRouter
-from fastapi.responses import UJSONResponse
+from fastapi.responses import ORJSONResponse
 
 from tinydb import TinyDB, Query
 
@@ -95,7 +95,7 @@ async def run_scene_by_id(scene_data: SceneMsg):
 @router.get("/scenes")
 async def get_scenes():
     data = table.all()
-    return UJSONResponse({"scenes": data})
+    return ORJSONResponse({"scenes": data})
 
 
 @router.post("/scenes")
@@ -105,7 +105,7 @@ async def create_scene(scene: SceneInput):
     logger.debug(scene_data)
     table.insert(scene_data)
 
-    return UJSONResponse(scene_data)
+    return ORJSONResponse(scene_data)
 
 
 @router.put("/scenes/{scene_id}")
@@ -115,7 +115,7 @@ async def update_scene(scene_id: str, scene_data: dict):
     if doc_ids:
         rule = table.get(SceneModel.id == scene_id)
 
-    return UJSONResponse(rule)
+    return ORJSONResponse(rule)
 
 
 @router.post("/scenes/{scene_id}")
@@ -139,7 +139,7 @@ async def run_scene(scene_id: str):
         except ValidationError as e:
             logger.error(str(e))
 
-    return UJSONResponse({"msg": "success"})
+    return ORJSONResponse({"msg": "success"})
 
 
 @router.delete("/scenes/{scene_id}")
@@ -149,4 +149,4 @@ async def delete_scene(scene_id: str):
     if rule:
         table.remove(SceneModel.id == scene_id)
 
-    return UJSONResponse({"msg": "success"})
+    return ORJSONResponse({"msg": "success"})

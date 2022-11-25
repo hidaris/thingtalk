@@ -44,7 +44,7 @@ class Fade(Action):
 
 
 class Light(Thing):
-    type = ["OnOffSwitch", "Light"]
+    type_alias = ["OnOffSwitch", "Light"]
     description = "A web connected lamp"
 
     def __init__(self):

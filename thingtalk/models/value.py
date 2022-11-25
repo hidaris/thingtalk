@@ -1,6 +1,6 @@
 """An observable, settable value interface."""
 
-from pyee import AsyncIOEventEmitter as EventEmitter
+from pyee.asyncio import AsyncIOEventEmitter as EventEmitter
 
 
 class Value(EventEmitter):

@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from fastapi import Depends, APIRouter
 from fastapi.exceptions import HTTPException
-from fastapi.responses import UJSONResponse
+from fastapi.responses import ORJSONResponse
 
 from tinydb import TinyDB, Query
 
@@ -34,13 +34,13 @@ async def create_rules(rules: typing.List[typing.Optional[RuleInput]]):
 
     data = table.all()
 
-    return UJSONResponse({"rules": data})
+    return ORJSONResponse({"rules": data})
 
 
 @router.get("/rules")
 async def get_rules():
     data = table.all()
-    return UJSONResponse({"rules": data})
+    return ORJSONResponse({"rules": data})
 
 
 @router.post("/rules")
@@ -54,9 +54,9 @@ async def create_rule(rule: RuleInput):
         await re.load_rule(rule)
     except ValidationError as e:
         logger.error(str(e))
-        return UJSONResponse(e.json(), status_code=422)
+        return ORJSONResponse(e.json(), status_code=422)
 
-    return UJSONResponse(rule_data)
+    return ORJSONResponse(rule_data)
 
 
 @router.put("/rules/{rule_id}")
@@ -77,7 +77,7 @@ async def update_rule(rule_id: str, rule_data: dict):
         except ValidationError as e:
             logger.error(str(e))
 
-    return UJSONResponse(rule.dict())
+    return ORJSONResponse(rule.dict())
 
 
 @router.delete("/rules/{rule_id}")
@@ -89,4 +89,4 @@ async def delete_rule(rule_id: str):
             await re.disable_rule(f"things_{pre.get('topic').split('/')[1]}_{pre.get('name')}_{pre.get('value')}", rule_id)
         table.remove(RuleModel.id == rule_id)
 
-    return UJSONResponse({"msg": "success"})
+    return ORJSONResponse({"msg": "success"})
