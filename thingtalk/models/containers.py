@@ -54,6 +54,7 @@ class MultipleThings:
         return self.name
 
     async def add_thing(self, thing: Thing):
+        thing.href_prefix = f"/things/{thing.id}"
         self.things.update({thing.id: thing})
         await thing.subscribe_broadcast()
 

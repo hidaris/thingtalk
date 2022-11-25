@@ -1,5 +1,5 @@
 from ..thingtalk import Value, Thing, Property, Event, Action
-from ..thingtalk.app import app
+from ..thingtalk.app import ThingTalk
 
 import time
 
@@ -91,6 +91,7 @@ class Light(Thing):
             OverheatedEvent
         )
 
-
 light = Light()
-app.state.things.things.update({light.id: light})
+light.href_prefix = f"/things/{light.id}"
+servient = ThingTalk(version='0.1')
+servient.app.state.things.things.update({light.id: light})

@@ -3,7 +3,7 @@ import re
 import socket
 import time
 from fastapi.testclient import TestClient
-from ..example.test_light import app
+from ..example.test_light import servient
 
 _TIME_REGEX = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
 _PROTO = "http"
@@ -34,7 +34,7 @@ def get_ip():
     return ip
 
 
-client = TestClient(app)
+client = TestClient(servient.app)
 
 
 def http_request(method, path, data=None):
